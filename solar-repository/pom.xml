@@ -1,0 +1,38 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<artifactId>solar-repository</artifactId>
+	<packaging>jar</packaging>
+
+	<name>solar-repository</name>
+	<url>http://maven.apache.org</url>
+
+	<parent>
+		<groupId>org.rainbow</groupId>
+		<artifactId>solar</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-rest-core</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.rainbow</groupId>
+			<artifactId>solar-model</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+	</dependencies>
+</project>

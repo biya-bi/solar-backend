@@ -29,4 +29,8 @@
 /bin/
 
 ### Maven ###
-/target/
+/solar-model/target/
+/solar-repository/target/
+/solar-rest/target/
+/solar-service-api/target/
+/solar-service-impl/target/
