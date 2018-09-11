@@ -77,7 +77,7 @@ public class PanelController {
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> deletePanel(@PathVariable Long id) {
-		Panel panel = panelService.findById(id);
+		Panel panel = panelService.getById(id);
 		if (panel == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
@@ -95,7 +95,7 @@ public class PanelController {
 
 	@GetMapping("/{id}")
 	public ResponseEntity<?> getPanel(@PathVariable Long id) {
-		Panel panel = panelService.findById(id);
+		Panel panel = panelService.getById(id);
 		if (panel == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
@@ -112,7 +112,7 @@ public class PanelController {
 	@PostMapping(path = "/{id}/hourly")
 	public ResponseEntity<?> saveHourlyElectricity(@PathVariable(value = "id") Long id,
 			@RequestBody HourlyElectricity hourlyElectricity) {
-		Panel panel = panelService.findById(id);
+		Panel panel = panelService.getById(id);
 		if (panel == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
@@ -126,7 +126,7 @@ public class PanelController {
 	@GetMapping(path = "/{id}/hourly")
 	public ResponseEntity<?> getHourlyElectricities(@PathVariable(value = "id") Long id,
 			@PageableDefault(size = 5) Pageable pageable) {
-		Panel panel = panelService.findById(id);
+		Panel panel = panelService.getById(id);
 		if (panel == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
@@ -145,7 +145,7 @@ public class PanelController {
 	@GetMapping(path = "/{id}/daily")
 	public ResponseEntity<?> getAllDailyElectricityFromYesterday(@PathVariable(value = "id") Long id,
 			@PageableDefault(size = 5) Pageable pageable) {
-		Panel panel = panelService.findById(id);
+		Panel panel = panelService.getById(id);
 		if (panel == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}

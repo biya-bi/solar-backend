@@ -14,20 +14,8 @@ import org.springframework.data.domain.Pageable;
  * @author biya-bi
  *
  */
-public interface PanelService {
-	void create(Panel panel);
-
-	void update(Panel panel);
-
-	void delete(Panel panel);
-
-	Panel findById(Long id);
-
-	Panel findBySerial(String serial);
-
-	boolean exists(Long id);
+public interface PanelService extends Service<Panel, Long> {
+	Panel getBySerial(String serial);
 
 	Page<Panel> getAllByOrderBySerialAsc(Pageable pageable);
-
-	long count();
 }

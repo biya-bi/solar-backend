@@ -41,8 +41,7 @@ public class PanelServiceImpl implements PanelService {
 	 * (non-Javadoc)
 	 * 
 	 * @see
-	 * org.rainbow.solar.service.service.PanelService#register(org.rainbow.solar.
-	 * service .model.Panel)
+	 * org.rainbow.solar.service.Service#create(org.rainbow.solar.model.Panel)
 	 */
 	@Override
 	public void create(Panel panel) {
@@ -53,8 +52,8 @@ public class PanelServiceImpl implements PanelService {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see org.rainbow.solar.service.service.PanelService#update(org.rainbow.solar.
-	 * service.model.Panel)
+	 * @see
+	 * org.rainbow.solar.service.Service#update(org.rainbow.solar.model.Panel)
 	 */
 	@Override
 	public void update(Panel panel) {
@@ -65,8 +64,8 @@ public class PanelServiceImpl implements PanelService {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see org.rainbow.solar.service.service.PanelService#delete(org.rainbow.solar.
-	 * service.model.Panel)
+	 * @see
+	 * org.rainbow.solar.service.Service#delete(org.rainbow.solar.model.Panel)
 	 */
 	@Override
 	public void delete(Panel panel) {
@@ -76,28 +75,27 @@ public class PanelServiceImpl implements PanelService {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see org.rainbow.solar.service.service.PanelService#findById(java.lang.Long)
+	 * @see org.rainbow.solar.service.Service#getById(java.lang.Long)
 	 */
 	@Override
-	public Panel findById(Long id) {
+	public Panel getById(Long id) {
 		return panelRepository.findById(id);
 	}
 
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see
-	 * org.rainbow.solar.service.service.PanelService#findBySerial(java.lang.String)
+	 * @see org.rainbow.solar.service.PanelService#getBySerial(java.lang.String)
 	 */
 	@Override
-	public Panel findBySerial(String serial) {
+	public Panel getBySerial(String serial) {
 		return panelRepository.findBySerial(serial);
 	}
 
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see org.rainbow.solar.service.service.PanelService#exists(java.lang.Long)
+	 * @see org.rainbow.solar.service.Service#exists(java.lang.Long)
 	 */
 	@Override
 	public boolean exists(Long id) {
@@ -107,7 +105,7 @@ public class PanelServiceImpl implements PanelService {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see org.rainbow.solar.service.service.PanelService#findAll()
+	 * @see org.rainbow.solar.service.PanelService#getAllByOrderBySerialAsc()
 	 */
 	@Override
 	public Page<Panel> getAllByOrderBySerialAsc(Pageable pageable) {
@@ -117,7 +115,7 @@ public class PanelServiceImpl implements PanelService {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see org.rainbow.solar.service.service.PanelService#getCount()
+	 * @see org.rainbow.solar.service.Service#count()
 	 */
 	@Override
 	public long count() {
