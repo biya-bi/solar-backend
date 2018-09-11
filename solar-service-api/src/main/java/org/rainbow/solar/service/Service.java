@@ -8,9 +8,9 @@ package org.rainbow.solar.service;
  *
  */
 public interface Service<E, I> {
-	void create(E e);
+	E create(E e);
 
-	void update(E e);
+	E update(E e);
 
 	void delete(E e);
 

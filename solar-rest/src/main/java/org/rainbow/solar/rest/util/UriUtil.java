@@ -12,8 +12,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  *
  */
 public class UriUtil {
-	public static <T> URI buildUri(T id) {
-		return ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{id}").buildAndExpand(id).toUri();
+	public static <T> URI buildUri(T value) {
+		return ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{value}").buildAndExpand(value).toUri();
 	}
 
 	public static <T> URI getCurrentUri() {

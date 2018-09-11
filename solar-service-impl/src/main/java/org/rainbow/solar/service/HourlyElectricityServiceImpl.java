@@ -9,7 +9,7 @@ import java.util.List;
 import org.rainbow.solar.model.DailyElectricity;
 import org.rainbow.solar.model.HourlyElectricity;
 import org.rainbow.solar.repository.HourlyElectricityRepository;
-import org.rainbow.solar.service.HourlyElectricityService;
+import org.rainbow.solar.service.exc.HourlyElectricityPanelMismatchException;
 import org.rainbow.solar.service.exc.HourlyElectricityPanelRequiredException;
 import org.rainbow.solar.service.exc.HourlyElectricityReadingDateRequiredException;
 import org.rainbow.solar.service.exc.HourlyElectricityReadingRequiredException;
@@ -37,9 +37,69 @@ public class HourlyElectricityServiceImpl implements HourlyElectricityService {
 			throw new HourlyElectricityPanelRequiredException();
 	}
 
-	public HourlyElectricity save(HourlyElectricity hourlyElectricity) {
+	private void validatePanel(HourlyElectricity hourlyElectricity) {
+		if (!hourlyElectricityRepository.findById(hourlyElectricity.getId()).getPanel()
+				.equals(hourlyElectricity.getPanel()))
+			throw new HourlyElectricityPanelMismatchException(hourlyElectricity.getId(),
+					hourlyElectricity.getPanel().getId());
+	}
+
+	public HourlyElectricity create(HourlyElectricity hourlyElectricity) {
 		validate(hourlyElectricity);
 		return hourlyElectricityRepository.save(hourlyElectricity);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.rainbow.solar.service.Service#update(java.lang.Object)
+	 */
+	@Override
+	public HourlyElectricity update(HourlyElectricity hourlyElectricity) {
+		validate(hourlyElectricity);
+		validatePanel(hourlyElectricity);
+		return hourlyElectricityRepository.save(hourlyElectricity);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.rainbow.solar.service.Service#delete(java.lang.Object)
+	 */
+	@Override
+	public void delete(HourlyElectricity hourlyElectricity) {
+		validatePanel(hourlyElectricity);
+		hourlyElectricityRepository.delete(hourlyElectricity);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.rainbow.solar.service.Service#getById(java.lang.Object)
+	 */
+	@Override
+	public HourlyElectricity getById(Long id) {
+		return hourlyElectricityRepository.findById(id);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.rainbow.solar.service.Service#exists(java.lang.Object)
+	 */
+	@Override
+	public boolean exists(Long id) {
+		return hourlyElectricityRepository.exists(id);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.rainbow.solar.service.Service#count()
+	 */
+	@Override
+	public long count() {
+		return hourlyElectricityRepository.count();
 	}
 
 	public Page<HourlyElectricity> getHourlyElectricities(Long panelId, Pageable pageable) {
@@ -54,7 +114,7 @@ public class HourlyElectricityServiceImpl implements HourlyElectricityService {
 
 	@Override
 	public long getHourlyElectricitiesCount(Long panelId) {
-		return hourlyElectricityRepository.findHourlyElectricitiesCount(panelId);
+		return hourlyElectricityRepository.countByPanelId(panelId);
 	}
 
 }

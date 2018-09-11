@@ -14,6 +14,7 @@ import org.rainbow.solar.model.HourlyElectricity;
 import org.rainbow.solar.model.Panel;
 import org.rainbow.solar.rest.converter.PanelDtoConverter;
 import org.rainbow.solar.rest.dto.PanelDto;
+import org.rainbow.solar.rest.err.HourlyElectricityNotFoundError;
 import org.rainbow.solar.rest.err.PanelNotFoundError;
 import org.rainbow.solar.rest.util.UriUtil;
 import org.rainbow.solar.service.HourlyElectricityService;
@@ -103,21 +104,60 @@ public class PanelController {
 	}
 
 	/**
-	 * Save hourly electricity.
+	 * Create hourly electricity.
 	 * 
 	 * @param id                The ID of the panel that generated the electricity.
 	 * @param hourlyElectricity generated electricity by this panel.
 	 * @return
 	 */
 	@PostMapping(path = "/{id}/hourly")
-	public ResponseEntity<?> saveHourlyElectricity(@PathVariable(value = "id") Long id,
+	public ResponseEntity<?> createHourlyElectricity(@PathVariable(value = "id") Long id,
 			@RequestBody HourlyElectricity hourlyElectricity) {
 		Panel panel = panelService.getById(id);
 		if (panel == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
 		hourlyElectricity.setPanel(panel);
-		return ResponseEntity.ok(hourlyElectricityService.save(hourlyElectricity));
+		hourlyElectricityService.create(hourlyElectricity);
+		return ResponseEntity.created(UriUtil.buildUri(hourlyElectricity.getId())).build();
+	}
+
+	@PutMapping(path = "/{id}/hourly/{hourlyElectricityId}")
+	public ResponseEntity<?> updateHourlyElectricity(@PathVariable(value = "id") Long id,
+			@PathVariable(value = "hourlyElectricityId") Long hourlyElectricityId,
+			@RequestBody HourlyElectricity hourlyElectricity) {
+		Panel panel = panelService.getById(id);
+		if (panel == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
+		}
+		if (!hourlyElectricityService.exists(hourlyElectricityId)) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new HourlyElectricityNotFoundError(hourlyElectricityId));
+		}
+		hourlyElectricity.setPanel(panel);
+		hourlyElectricity.setId(hourlyElectricityId);
+		hourlyElectricityService.update(hourlyElectricity);
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping(path = "/{id}/hourly/{hourlyElectricityId}")
+	public ResponseEntity<?> deleteHourlyElectricity(@PathVariable Long id,
+			@PathVariable(value = "hourlyElectricityId") Long hourlyElectricityId) {
+		Panel panel = panelService.getById(id);
+		if (panel == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
+		}
+		HourlyElectricity hourlyElectricity = hourlyElectricityService.getById(hourlyElectricityId);
+		if (hourlyElectricity == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new HourlyElectricityNotFoundError(hourlyElectricityId));
+		}
+
+		Panel p = new Panel();
+		p.setId(id);
+		hourlyElectricity.setPanel(panel);
+		hourlyElectricityService.delete(hourlyElectricity);
+		return ResponseEntity.noContent().build();
 	}
 
 	/**

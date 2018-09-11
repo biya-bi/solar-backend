@@ -41,31 +41,31 @@ public class PanelServiceImpl implements PanelService {
 	 * (non-Javadoc)
 	 * 
 	 * @see
-	 * org.rainbow.solar.service.Service#create(org.rainbow.solar.model.Panel)
+	 * org.rainbow.solar.service.Service#create(java.lang.Object)
 	 */
 	@Override
-	public void create(Panel panel) {
+	public Panel create(Panel panel) {
 		validate(panel);
-		panelRepository.save(panel);
+		return panelRepository.save(panel);
 	}
 
 	/*
 	 * (non-Javadoc)
 	 * 
 	 * @see
-	 * org.rainbow.solar.service.Service#update(org.rainbow.solar.model.Panel)
+	 * org.rainbow.solar.service.Service#update(java.lang.Object)
 	 */
 	@Override
-	public void update(Panel panel) {
+	public Panel update(Panel panel) {
 		validate(panel);
-		panelRepository.save(panel);
+		return panelRepository.save(panel);
 	}
 
 	/*
 	 * (non-Javadoc)
 	 * 
 	 * @see
-	 * org.rainbow.solar.service.Service#delete(org.rainbow.solar.model.Panel)
+	 * org.rainbow.solar.service.Service#delete(java.lang.Object)
 	 */
 	@Override
 	public void delete(Panel panel) {

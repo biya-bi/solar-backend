@@ -18,9 +18,7 @@ import org.springframework.data.domain.Pageable;
  * @author biya-bi
  *
  */
-public interface HourlyElectricityService {
-	HourlyElectricity save(HourlyElectricity hourlyElectricity);
-
+public interface HourlyElectricityService extends Service<HourlyElectricity, Long> {
 	Page<HourlyElectricity> getHourlyElectricities(Long panelId, Pageable pageable);
 
 	List<DailyElectricity> getDailyElectricitiesBeforeDate(Long panelId, LocalDateTime dateTime, Pageable pageable);

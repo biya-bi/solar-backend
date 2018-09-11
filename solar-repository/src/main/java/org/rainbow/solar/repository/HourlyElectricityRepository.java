@@ -16,7 +16,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.rest.core.annotation.RestResource;
 
 /**
- * This interface encapsulates data access layer operations related to an hourly electricity.
+ * This interface encapsulates data access layer operations related to an hourly
+ * electricity.
  * 
  * @author biya-bi
  */
@@ -34,5 +35,7 @@ public interface HourlyElectricityRepository extends PagingAndSortingRepository<
 			@Param("dateTime") LocalDateTime dateTime, Pageable pageable);
 
 	@Query("SELECT COUNT(id) FROM HourlyElectricity WHERE panel.id=:panelId")
-	long findHourlyElectricitiesCount(@Param("panelId") Long panelId);
+	long countByPanelId(@Param("panelId") Long panelId);
+
+	HourlyElectricity findById(Long id);
 }

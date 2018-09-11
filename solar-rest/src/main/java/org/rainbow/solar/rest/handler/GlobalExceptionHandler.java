@@ -3,6 +3,7 @@
  */
 package org.rainbow.solar.rest.handler;
 
+import org.rainbow.solar.rest.err.HourlyElectricityPanelMismatchError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingDateRequiredError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingRequiredError;
 import org.rainbow.solar.rest.err.PanelSerialDuplicateError;
@@ -10,6 +11,7 @@ import org.rainbow.solar.rest.err.PanelSerialMaxLengthExceededError;
 import org.rainbow.solar.rest.err.PanelSerialRequiredError;
 import org.rainbow.solar.rest.err.SolarError;
 import org.rainbow.solar.rest.err.SolarErrorCode;
+import org.rainbow.solar.service.exc.HourlyElectricityPanelMismatchException;
 import org.rainbow.solar.service.exc.HourlyElectricityReadingDateRequiredException;
 import org.rainbow.solar.service.exc.HourlyElectricityReadingRequiredException;
 import org.rainbow.solar.service.exc.PanelSerialDuplicateException;
@@ -77,5 +79,13 @@ public class GlobalExceptionHandler {
 		LOG.error(exception.getMessage(), exception);
 		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
 				.body(new HourlyElectricityReadingRequiredError(exception.getMessage()));
+	}
+
+	@ExceptionHandler
+	public ResponseEntity<HourlyElectricityPanelMismatchError> handle(
+			HourlyElectricityPanelMismatchException exception) {
+		LOG.error(exception.getMessage(), exception);
+		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new HourlyElectricityPanelMismatchError(
+				exception.getHourlyElectricityId(), exception.getPanelId(), exception.getMessage()));
 	}
 }

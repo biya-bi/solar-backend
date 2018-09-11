@@ -22,6 +22,7 @@ import org.rainbow.solar.model.HourlyElectricity;
 import org.rainbow.solar.model.Panel;
 import org.rainbow.solar.model.UnitOfMeasure;
 import org.rainbow.solar.rest.dto.PanelDto;
+import org.rainbow.solar.rest.err.HourlyElectricityNotFoundError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingDateRequiredError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingRequiredError;
 import org.rainbow.solar.rest.err.PanelNotFoundError;
@@ -32,6 +33,7 @@ import org.rainbow.solar.rest.err.SolarErrorCode;
 import org.rainbow.solar.rest.util.DatabaseUtil;
 import org.rainbow.solar.rest.util.ErrorMessagesResourceBundle;
 import org.rainbow.solar.rest.util.JsonHttpEntityBuilder;
+import org.rainbow.solar.rest.util.RegexUtil;
 import org.rainbow.solar.service.util.ExceptionMessagesResourceBundle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -90,7 +92,7 @@ public class PanelControllerTests {
 		URI location = response.getHeaders().getLocation();
 
 		Assert.assertNotNull(location);
-		// TODO: Test location format here
+		Assert.assertTrue(RegexUtil.endsWithDigit("/api/panels/", location.toString()));
 	}
 
 	@Test
@@ -152,202 +154,7 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void saveHourlyElectricity_AllFieldsAreValid_HourlyElectricitySaved() {
-		LocalDateTime now = LocalDateTime.now();
-
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
-				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
-
-		ResponseEntity<HourlyElectricity> response = template.postForEntity("/api/panels/2/hourly", hourlyElectricity,
-				HourlyElectricity.class);
-
-		Assert.assertEquals(200, response.getStatusCode().value());
-
-		HourlyElectricity actual = response.getBody();
-		Assert.assertNotNull(actual);
-		Assert.assertNotNull(actual.getId());
-		Assert.assertEquals(Long.valueOf(500), actual.getGeneratedElectricity());
-		Assert.assertEquals(now, actual.getReadingAt());
-	}
-
-	@Test
-	public void saveHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s/hourly", panelId);
-
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
-				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
-
-		ResponseEntity<PanelNotFoundError> response = template.postForEntity(uri, hourlyElectricity,
-				PanelNotFoundError.class);
-
-		Assert.assertEquals(404, response.getStatusCode().value());
-
-		PanelNotFoundError error = response.getBody();
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
-				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
-	}
-
-	@Test
-	public void saveHourlyElectricity_ReadingAtIsNotSpecified_UnprocessableEntityErrorReturned() {
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
-				.build();
-
-		ResponseEntity<HourlyElectricityReadingDateRequiredError> response = template.postForEntity(
-				"/api/panels/3/hourly", hourlyElectricity, HourlyElectricityReadingDateRequiredError.class);
-
-		Assert.assertEquals(422, response.getStatusCode().value());
-
-		HourlyElectricityReadingDateRequiredError error = response.getBody();
-		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_DATE_REQUIRED.value(), error.getCode());
-		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.date.required"),
-				error.getMessage());
-	}
-
-	@Test
-	public void saveHourlyElectricity_GeneratedElectricityIsNotSpecified_UnprocessableEntityErrorReturned() {
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder()
-				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
-
-		ResponseEntity<HourlyElectricityReadingRequiredError> response = template.postForEntity("/api/panels/4/hourly",
-				hourlyElectricity, HourlyElectricityReadingRequiredError.class);
-
-		Assert.assertEquals(422, response.getStatusCode().value());
-
-		HourlyElectricityReadingRequiredError error = response.getBody();
-		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_REQUIRED.value(), error.getCode());
-		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.required"),
-				error.getMessage());
-	}
-
-	@Test
-	public void getHourlyElectricities_PanelIdGiven_HourlyElectricitiesReturned() throws Exception {
-		// We construct and make a GET request that should return 3 JSON hourly
-		// electricity objects starting from page 0.
-		ResponseEntity<List<HourlyElectricity>> response = template.exchange("/api/panels/1/hourly?page=0&size=3",
-				HttpMethod.GET, null, new ParameterizedTypeReference<List<HourlyElectricity>>() {
-				});
-
-		Assert.assertEquals(200, response.getStatusCode().value());
-
-		List<HourlyElectricity> hourlyElectricities = response.getBody();
-		Assert.assertNotNull(hourlyElectricities);
-		Assert.assertEquals(3, hourlyElectricities.size());
-	}
-
-	@Test
-	public void getHourlyElectricities_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s/hourly?page=0&size=3", panelId);
-
-		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.GET, null,
-				PanelNotFoundError.class);
-
-		Assert.assertEquals(404, response.getStatusCode().value());
-
-		PanelNotFoundError error = response.getBody();
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
-				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
-	}
-
-	@Test
-	public void getAllDailyElectricityFromYesterday_PanelIdGiven_DailyElectricitiesReturned() throws Exception {
-		ResponseEntity<List<DailyElectricity>> response = template.exchange("/api/panels/2/daily", HttpMethod.GET, null,
-				new ParameterizedTypeReference<List<DailyElectricity>>() {
-				});
-
-		Assert.assertEquals(200, response.getStatusCode().value());
-
-		List<DailyElectricity> dailyElectricities = response.getBody();
-		Assert.assertNotNull(dailyElectricities);
-		Assert.assertEquals(3, dailyElectricities.size());
-
-		LocalDate today = LocalDate.now();
-
-		DailyElectricity dailyElectricity1 = dailyElectricities.get(0);
-
-		Assert.assertEquals(today.minusDays(1), dailyElectricity1.getDate());
-		Assert.assertEquals(Long.valueOf(4700), dailyElectricity1.getSum());
-		Assert.assertEquals(Double.valueOf(1175), dailyElectricity1.getAverage());
-		Assert.assertEquals(Long.valueOf(975), dailyElectricity1.getMin());
-		Assert.assertEquals(Long.valueOf(1500), dailyElectricity1.getMax());
-
-		DailyElectricity dailyElectricity2 = dailyElectricities.get(1);
-
-		Assert.assertEquals(today.minusDays(2), dailyElectricity2.getDate());
-		Assert.assertEquals(Long.valueOf(3025), dailyElectricity2.getSum());
-		Assert.assertEquals(Double.valueOf(756.25), dailyElectricity2.getAverage());
-		Assert.assertEquals(Long.valueOf(700), dailyElectricity2.getMin());
-		Assert.assertEquals(Long.valueOf(850), dailyElectricity2.getMax());
-
-		DailyElectricity dailyElectricity3 = dailyElectricities.get(2);
-
-		Assert.assertEquals(today.minusDays(3), dailyElectricity3.getDate());
-		Assert.assertEquals(Long.valueOf(3575), dailyElectricity3.getSum());
-		Assert.assertEquals(Double.valueOf(893.75), dailyElectricity3.getAverage());
-		Assert.assertEquals(Long.valueOf(800), dailyElectricity3.getMin());
-		Assert.assertEquals(Long.valueOf(950), dailyElectricity3.getMax());
-	}
-
-	@Test
-	public void getAllDailyElectricityFromYesterday_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s/daily", panelId);
-
-		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.GET, null,
-				PanelNotFoundError.class);
-
-		Assert.assertEquals(404, response.getStatusCode().value());
-
-		PanelNotFoundError error = response.getBody();
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
-				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
-	}
-
-	@Test
-	public void getPanel_PanelIdGiven_PanelReturned() {
-		String uri = "/api/panels/1";
-
-		ResponseEntity<PanelDto> response = template.getForEntity(uri, PanelDto.class);
-
-		Assert.assertEquals(200, response.getStatusCode().value());
-
-		PanelDto actual = response.getBody();
-		Assert.assertNotNull(actual);
-		Assert.assertTrue(actual.getUri().toString().endsWith(uri));
-		Assert.assertEquals("100001", actual.getSerial());
-		Assert.assertEquals(Double.valueOf(70.650001), actual.getLatitude());
-		Assert.assertEquals(Double.valueOf(72.512351), actual.getLongitude());
-		Assert.assertEquals("canadiansolar", actual.getBrand());
-		Assert.assertTrue(actual.getHourlyUri().toString().endsWith(uri + "/hourly"));
-		Assert.assertTrue(actual.getDailyUri().toString().endsWith(uri + "/daily"));
-		Assert.assertEquals(UnitOfMeasure.W.toString(), actual.getUnitOfMeasure());
-	}
-
-	@Test
-	public void getPanel_PanelDoesNotExist_NotFoundErrorReturned() {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s", panelId);
-
-		ResponseEntity<PanelNotFoundError> response = template.getForEntity(uri, PanelNotFoundError.class);
-
-		Assert.assertEquals(404, response.getStatusCode().value());
-
-		PanelNotFoundError error = response.getBody();
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
-				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
-	}
-
-	@Test
-	public void updatePanel_AllFieldsAreValid_PanelCreated() {
+	public void updatePanel_AllFieldsAreValid_PanelUpdated() {
 		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", "22222")
 				.setProperty("latitude", 80.123456).setProperty("longitude", 81.654321).setProperty("brand", "tesla")
 				.setProperty("unitOfMeasure", "KW").build();
@@ -449,6 +256,42 @@ public class PanelControllerTests {
 
 		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.DELETE, null,
 				PanelNotFoundError.class);
+
+		Assert.assertEquals(404, response.getStatusCode().value());
+
+		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
+				error.getMessage());
+		Assert.assertEquals(panelId, error.getId());
+	}
+
+	@Test
+	public void getPanel_PanelIdGiven_PanelReturned() {
+		String uri = "/api/panels/1";
+
+		ResponseEntity<PanelDto> response = template.getForEntity(uri, PanelDto.class);
+
+		Assert.assertEquals(200, response.getStatusCode().value());
+
+		PanelDto actual = response.getBody();
+		Assert.assertNotNull(actual);
+		Assert.assertTrue(actual.getUri().toString().endsWith(uri));
+		Assert.assertEquals("100001", actual.getSerial());
+		Assert.assertEquals(Double.valueOf(70.650001), actual.getLatitude());
+		Assert.assertEquals(Double.valueOf(72.512351), actual.getLongitude());
+		Assert.assertEquals("canadiansolar", actual.getBrand());
+		Assert.assertTrue(actual.getHourlyUri().toString().endsWith(uri + "/hourly"));
+		Assert.assertTrue(actual.getDailyUri().toString().endsWith(uri + "/daily"));
+		Assert.assertEquals(UnitOfMeasure.W.toString(), actual.getUnitOfMeasure());
+	}
+
+	@Test
+	public void getPanel_PanelDoesNotExist_NotFoundErrorReturned() {
+		Long panelId = 5000L;
+		String uri = String.format("/api/panels/%s", panelId);
+
+		ResponseEntity<PanelNotFoundError> response = template.getForEntity(uri, PanelNotFoundError.class);
 
 		Assert.assertEquals(404, response.getStatusCode().value());
 
@@ -574,6 +417,320 @@ public class PanelControllerTests {
 		Long actual = response.getBody();
 
 		Assert.assertEquals(Long.valueOf(5), actual);
+	}
+
+	@Test
+	public void createHourlyElectricity_AllFieldsAreValid_HourlyElectricityCreated() {
+		LocalDateTime now = LocalDateTime.now();
+
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
+				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		ResponseEntity<?> response = template.postForEntity("/api/panels/2/hourly", hourlyElectricity, Object.class);
+
+		Assert.assertEquals(201, response.getStatusCode().value());
+
+		URI location = response.getHeaders().getLocation();
+
+		Assert.assertNotNull(location);
+		Assert.assertTrue(RegexUtil.endsWithDigit("/api/panels/2/hourly/", location.toString()));
+	}
+
+	@Test
+	public void createHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() {
+		Long panelId = 5000L;
+		String uri = String.format("/api/panels/%s/hourly", panelId);
+
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
+				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		ResponseEntity<PanelNotFoundError> response = template.postForEntity(uri, hourlyElectricity,
+				PanelNotFoundError.class);
+
+		Assert.assertEquals(404, response.getStatusCode().value());
+
+		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
+				error.getMessage());
+		Assert.assertEquals(panelId, error.getId());
+	}
+
+	@Test
+	public void createHourlyElectricity_ReadingAtIsNotSpecified_UnprocessableEntityErrorReturned() {
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
+				.build();
+
+		ResponseEntity<HourlyElectricityReadingDateRequiredError> response = template.postForEntity(
+				"/api/panels/3/hourly", hourlyElectricity, HourlyElectricityReadingDateRequiredError.class);
+
+		Assert.assertEquals(422, response.getStatusCode().value());
+
+		HourlyElectricityReadingDateRequiredError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_DATE_REQUIRED.value(), error.getCode());
+		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.date.required"),
+				error.getMessage());
+	}
+
+	@Test
+	public void createHourlyElectricity_GeneratedElectricityIsNotSpecified_UnprocessableEntityErrorReturned() {
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder()
+				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		ResponseEntity<HourlyElectricityReadingRequiredError> response = template.postForEntity("/api/panels/4/hourly",
+				hourlyElectricity, HourlyElectricityReadingRequiredError.class);
+
+		Assert.assertEquals(422, response.getStatusCode().value());
+
+		HourlyElectricityReadingRequiredError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_REQUIRED.value(), error.getCode());
+		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.required"),
+				error.getMessage());
+	}
+
+	@Test
+	public void updateHourlyElectricity_AllFieldsAreValid_HourlyElectricityUpdated() {
+		LocalDateTime now = LocalDateTime.now();
+
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "2000")
+				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		ResponseEntity<?> response = template.exchange("/api/panels/1/hourly/1", HttpMethod.PUT, hourlyElectricity,
+				PanelNotFoundError.class);
+
+		Assert.assertEquals(204, response.getStatusCode().value());
+	}
+
+	@Test
+	public void updateHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() {
+		Long panelId = 5000L;
+		String uri = String.format("/api/panels/%s/hourly/1", panelId);
+
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
+				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.PUT, hourlyElectricity,
+				PanelNotFoundError.class);
+
+		Assert.assertEquals(404, response.getStatusCode().value());
+
+		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
+				error.getMessage());
+		Assert.assertEquals(panelId, error.getId());
+	}
+
+	@Test
+	public void updateHourlyElectricity_ReadingAtIsNotSpecified_UnprocessableEntityErrorReturned() {
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
+				.build();
+
+		ResponseEntity<HourlyElectricityReadingDateRequiredError> response = template.exchange("/api/panels/1/hourly/1",
+				HttpMethod.PUT, hourlyElectricity, HourlyElectricityReadingDateRequiredError.class);
+
+		Assert.assertEquals(422, response.getStatusCode().value());
+
+		HourlyElectricityReadingDateRequiredError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_DATE_REQUIRED.value(), error.getCode());
+		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.date.required"),
+				error.getMessage());
+	}
+
+	@Test
+	public void updateHourlyElectricity_GeneratedElectricityIsNotSpecified_UnprocessableEntityErrorReturned() {
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder()
+				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		ResponseEntity<HourlyElectricityReadingRequiredError> response = template.exchange("/api/panels/1/hourly/1",
+				HttpMethod.PUT, hourlyElectricity, HourlyElectricityReadingRequiredError.class);
+
+		Assert.assertEquals(422, response.getStatusCode().value());
+
+		HourlyElectricityReadingRequiredError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_REQUIRED.value(), error.getCode());
+		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.required"),
+				error.getMessage());
+	}
+
+	@Test
+	public void updateHourlyElectricity_HourlyElectriciyDoesnotExist_NotFoundErrorReturned() {
+		Long hourlyElectricityId = 5000L;
+		String uri = String.format("/api/panels/1/hourly/%s", hourlyElectricityId);
+		LocalDateTime now = LocalDateTime.now();
+
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "2500")
+				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		ResponseEntity<HourlyElectricityNotFoundError> response = template.exchange(uri, HttpMethod.PUT,
+				hourlyElectricity, HourlyElectricityNotFoundError.class);
+
+		Assert.assertEquals(404, response.getStatusCode().value());
+
+		HourlyElectricityNotFoundError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("hourly.electricity.id.not.found"),
+				hourlyElectricityId), error.getMessage());
+		Assert.assertEquals(hourlyElectricityId, error.getId());
+	}
+
+	@Test
+	public void updateHourlyElectricity_HourlyElectricityNotGeneratedByPanel_UnprocessableEntityErrorReturned() {
+		Long panelId = 2L;
+		Long hourlyElectricityId = 1L;
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
+
+		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
+				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		ResponseEntity<HourlyElectricityReadingRequiredError> response = template.exchange(uri, HttpMethod.PUT,
+				hourlyElectricity, HourlyElectricityReadingRequiredError.class);
+
+		Assert.assertEquals(422, response.getStatusCode().value());
+
+		HourlyElectricityReadingRequiredError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_PANEL_MISMATCH.value(), error.getCode());
+		Assert.assertEquals(
+				String.format(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.panel.mismatch"),
+						hourlyElectricityId, panelId),
+				error.getMessage());
+	}
+
+	@Test
+	public void deleteHourlyElectricity_PanelIdAndHourlyElectricityIdGiven_HourlyElectricityDeleted() {
+		String uri = "/api/panels/1/hourly/1";
+
+		ResponseEntity<?> response = template.exchange(uri, HttpMethod.DELETE, null, Object.class);
+
+		// The first delete operation should return a NO_CONTENT HTTP status code.
+		Assert.assertEquals(204, response.getStatusCode().value());
+
+		response = template.exchange(uri, HttpMethod.DELETE, null, Object.class);
+
+		// The second delete operation should return a NOT_FOUND HTTP status code.
+		Assert.assertEquals(404, response.getStatusCode().value());
+	}
+
+	@Test
+	public void deleteHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() {
+		Long panelId = 5000L;
+		String uri = String.format("/api/panels/%s/hourly/1", panelId);
+
+		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.DELETE, null,
+				PanelNotFoundError.class);
+
+		Assert.assertEquals(404, response.getStatusCode().value());
+
+		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
+				error.getMessage());
+		Assert.assertEquals(panelId, error.getId());
+	}
+
+	@Test
+	public void deleteHourlyElectricity_HourlyElectricityDoesnotExist_NotFoundErrorReturned() {
+		Long hourlyElectricityId = 5000L;
+		String uri = String.format("/api/panels/1/hourly/%s", hourlyElectricityId);
+
+		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.DELETE, null,
+				PanelNotFoundError.class);
+
+		Assert.assertEquals(404, response.getStatusCode().value());
+
+		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("hourly.electricity.id.not.found"), hourlyElectricityId),
+				error.getMessage());
+		Assert.assertEquals(hourlyElectricityId, error.getId());
+	}
+
+	@Test
+	public void getHourlyElectricities_PanelIdGiven_HourlyElectricitiesReturned() throws Exception {
+		// We construct and make a GET request that should return 3 JSON hourly
+		// electricity objects starting from page 0.
+		ResponseEntity<List<HourlyElectricity>> response = template.exchange("/api/panels/1/hourly?page=0&size=3",
+				HttpMethod.GET, null, new ParameterizedTypeReference<List<HourlyElectricity>>() {
+				});
+
+		Assert.assertEquals(200, response.getStatusCode().value());
+
+		List<HourlyElectricity> hourlyElectricities = response.getBody();
+		Assert.assertNotNull(hourlyElectricities);
+		Assert.assertEquals(3, hourlyElectricities.size());
+	}
+
+	@Test
+	public void getHourlyElectricities_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 5000L;
+		String uri = String.format("/api/panels/%s/hourly?page=0&size=3", panelId);
+
+		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.GET, null,
+				PanelNotFoundError.class);
+
+		Assert.assertEquals(404, response.getStatusCode().value());
+
+		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
+				error.getMessage());
+		Assert.assertEquals(panelId, error.getId());
+	}
+
+	@Test
+	public void getAllDailyElectricityFromYesterday_PanelIdGiven_DailyElectricitiesReturned() throws Exception {
+		ResponseEntity<List<DailyElectricity>> response = template.exchange("/api/panels/2/daily", HttpMethod.GET, null,
+				new ParameterizedTypeReference<List<DailyElectricity>>() {
+				});
+
+		Assert.assertEquals(200, response.getStatusCode().value());
+
+		List<DailyElectricity> dailyElectricities = response.getBody();
+		Assert.assertNotNull(dailyElectricities);
+		Assert.assertEquals(3, dailyElectricities.size());
+
+		LocalDate today = LocalDate.now();
+
+		DailyElectricity dailyElectricity1 = dailyElectricities.get(0);
+
+		Assert.assertEquals(today.minusDays(1), dailyElectricity1.getDate());
+		Assert.assertEquals(Long.valueOf(4700), dailyElectricity1.getSum());
+		Assert.assertEquals(Double.valueOf(1175), dailyElectricity1.getAverage());
+		Assert.assertEquals(Long.valueOf(975), dailyElectricity1.getMin());
+		Assert.assertEquals(Long.valueOf(1500), dailyElectricity1.getMax());
+
+		DailyElectricity dailyElectricity2 = dailyElectricities.get(1);
+
+		Assert.assertEquals(today.minusDays(2), dailyElectricity2.getDate());
+		Assert.assertEquals(Long.valueOf(3025), dailyElectricity2.getSum());
+		Assert.assertEquals(Double.valueOf(756.25), dailyElectricity2.getAverage());
+		Assert.assertEquals(Long.valueOf(700), dailyElectricity2.getMin());
+		Assert.assertEquals(Long.valueOf(850), dailyElectricity2.getMax());
+
+		DailyElectricity dailyElectricity3 = dailyElectricities.get(2);
+
+		Assert.assertEquals(today.minusDays(3), dailyElectricity3.getDate());
+		Assert.assertEquals(Long.valueOf(3575), dailyElectricity3.getSum());
+		Assert.assertEquals(Double.valueOf(893.75), dailyElectricity3.getAverage());
+		Assert.assertEquals(Long.valueOf(800), dailyElectricity3.getMin());
+		Assert.assertEquals(Long.valueOf(950), dailyElectricity3.getMax());
+	}
+
+	@Test
+	public void getAllDailyElectricityFromYesterday_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 5000L;
+		String uri = String.format("/api/panels/%s/daily", panelId);
+
+		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.GET, null,
+				PanelNotFoundError.class);
+
+		Assert.assertEquals(404, response.getStatusCode().value());
+
+		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
+				error.getMessage());
+		Assert.assertEquals(panelId, error.getId());
 	}
 
 	@Test
