@@ -283,6 +283,7 @@ public class PanelControllerTests {
 		Assert.assertEquals("canadiansolar", actual.getBrand());
 		Assert.assertTrue(actual.getHourlyUri().toString().endsWith(uri + "/hourly"));
 		Assert.assertTrue(actual.getDailyUri().toString().endsWith(uri + "/daily"));
+		Assert.assertTrue(actual.getHourlyCountUri().toString().endsWith(uri + "/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.W.toString(), actual.getUnitOfMeasure());
 	}
 
@@ -322,6 +323,7 @@ public class PanelControllerTests {
 		Assert.assertTrue(panelDto1.getUri().toString().endsWith("/api/panels/1"));
 		Assert.assertTrue(panelDto1.getHourlyUri().toString().endsWith("/api/panels/1/hourly"));
 		Assert.assertTrue(panelDto1.getDailyUri().toString().endsWith("/api/panels/1/daily"));
+		Assert.assertTrue(panelDto1.getHourlyCountUri().toString().endsWith("/api/panels/1/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.W.toString(), panelDto1.getUnitOfMeasure());
 
 		PanelDto panelDto2 = panelDtos.get(1);
@@ -332,6 +334,7 @@ public class PanelControllerTests {
 		Assert.assertTrue(panelDto2.getUri().toString().endsWith("/api/panels/2"));
 		Assert.assertTrue(panelDto2.getHourlyUri().toString().endsWith("/api/panels/2/hourly"));
 		Assert.assertTrue(panelDto2.getDailyUri().toString().endsWith("/api/panels/2/daily"));
+		Assert.assertTrue(panelDto2.getHourlyCountUri().toString().endsWith("/api/panels/2/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto2.getUnitOfMeasure());
 
 		PanelDto panelDto3 = panelDtos.get(2);
@@ -342,6 +345,7 @@ public class PanelControllerTests {
 		Assert.assertTrue(panelDto3.getUri().toString().endsWith("/api/panels/3"));
 		Assert.assertTrue(panelDto3.getHourlyUri().toString().endsWith("/api/panels/3/hourly"));
 		Assert.assertTrue(panelDto3.getDailyUri().toString().endsWith("/api/panels/3/daily"));
+		Assert.assertTrue(panelDto3.getHourlyCountUri().toString().endsWith("/api/panels/3/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto3.getUnitOfMeasure());
 
 		PanelDto panelDto4 = panelDtos.get(3);
@@ -352,6 +356,7 @@ public class PanelControllerTests {
 		Assert.assertTrue(panelDto4.getUri().toString().endsWith("/api/panels/4"));
 		Assert.assertTrue(panelDto4.getHourlyUri().toString().endsWith("/api/panels/4/hourly"));
 		Assert.assertTrue(panelDto4.getDailyUri().toString().endsWith("/api/panels/4/daily"));
+		Assert.assertTrue(panelDto4.getHourlyCountUri().toString().endsWith("/api/panels/4/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.W.toString(), panelDto4.getUnitOfMeasure());
 
 		PanelDto panelDto5 = panelDtos.get(4);
@@ -362,6 +367,7 @@ public class PanelControllerTests {
 		Assert.assertTrue(panelDto5.getUri().toString().endsWith("/api/panels/5"));
 		Assert.assertTrue(panelDto5.getHourlyUri().toString().endsWith("/api/panels/5/hourly"));
 		Assert.assertTrue(panelDto5.getDailyUri().toString().endsWith("/api/panels/5/daily"));
+		Assert.assertTrue(panelDto5.getHourlyCountUri().toString().endsWith("/api/panels/5/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto5.getUnitOfMeasure());
 	}
 
@@ -385,6 +391,7 @@ public class PanelControllerTests {
 		Assert.assertTrue(panelDto1.getUri().toString().endsWith("/api/panels/1"));
 		Assert.assertTrue(panelDto1.getHourlyUri().toString().endsWith("/api/panels/1/hourly"));
 		Assert.assertTrue(panelDto1.getDailyUri().toString().endsWith("/api/panels/1/daily"));
+		Assert.assertTrue(panelDto1.getHourlyCountUri().toString().endsWith("/api/panels/1/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.W.toString(), panelDto1.getUnitOfMeasure());
 
 		PanelDto panelDto2 = panelDtos.get(1);
@@ -395,6 +402,7 @@ public class PanelControllerTests {
 		Assert.assertTrue(panelDto2.getUri().toString().endsWith("/api/panels/2"));
 		Assert.assertTrue(panelDto2.getHourlyUri().toString().endsWith("/api/panels/2/hourly"));
 		Assert.assertTrue(panelDto2.getDailyUri().toString().endsWith("/api/panels/2/daily"));
+		Assert.assertTrue(panelDto2.getHourlyCountUri().toString().endsWith("/api/panels/2/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto2.getUnitOfMeasure());
 
 		PanelDto panelDto3 = panelDtos.get(2);
@@ -405,6 +413,7 @@ public class PanelControllerTests {
 		Assert.assertTrue(panelDto3.getUri().toString().endsWith("/api/panels/3"));
 		Assert.assertTrue(panelDto3.getHourlyUri().toString().endsWith("/api/panels/3/hourly"));
 		Assert.assertTrue(panelDto3.getDailyUri().toString().endsWith("/api/panels/3/daily"));
+		Assert.assertTrue(panelDto3.getHourlyCountUri().toString().endsWith("/api/panels/3/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto3.getUnitOfMeasure());
 	}
 
@@ -640,8 +649,8 @@ public class PanelControllerTests {
 
 		PanelNotFoundError error = response.getBody();
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("hourly.electricity.id.not.found"), hourlyElectricityId),
-				error.getMessage());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("hourly.electricity.id.not.found"),
+				hourlyElectricityId), error.getMessage());
 		Assert.assertEquals(hourlyElectricityId, error.getId());
 	}
 

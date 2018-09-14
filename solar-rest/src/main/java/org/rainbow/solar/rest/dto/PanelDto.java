@@ -23,12 +23,13 @@ public class PanelDto implements Serializable {
 	private String unitOfMeasure;
 	private URI hourlyUri;
 	private URI dailyUri;
+	private URI hourlyCountUri;
 
 	public PanelDto() {
 	}
 
 	public PanelDto(URI uri, String serial, Double latitude, Double longitude, String brand, String unitOfMeasure,
-			URI hourlyUri, URI dailyUri) {
+			URI hourlyUri, URI dailyUri, URI hourlyCountUri) {
 		this.uri = uri;
 		this.serial = serial;
 		this.latitude = latitude;
@@ -37,6 +38,7 @@ public class PanelDto implements Serializable {
 		this.unitOfMeasure = unitOfMeasure;
 		this.hourlyUri = hourlyUri;
 		this.dailyUri = dailyUri;
+		this.hourlyCountUri = hourlyCountUri;
 	}
 
 	public URI getUri() {
@@ -101,6 +103,14 @@ public class PanelDto implements Serializable {
 
 	public void setDailyUri(URI dailyUri) {
 		this.dailyUri = dailyUri;
+	}
+
+	public URI getHourlyCountUri() {
+		return hourlyCountUri;
+	}
+
+	public void setHourlyCountUri(URI hourlyCountUri) {
+		this.hourlyCountUri = hourlyCountUri;
 	}
 
 	@Override
