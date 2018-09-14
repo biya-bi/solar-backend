@@ -18,9 +18,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.rainbow.solar.model.DailyElectricity;
-import org.rainbow.solar.model.HourlyElectricity;
 import org.rainbow.solar.model.Panel;
 import org.rainbow.solar.model.UnitOfMeasure;
+import org.rainbow.solar.rest.dto.HourlyElectricityDto;
 import org.rainbow.solar.rest.dto.PanelDto;
 import org.rainbow.solar.rest.err.HourlyElectricityNotFoundError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingDateRequiredError;
@@ -658,15 +658,22 @@ public class PanelControllerTests {
 	public void getHourlyElectricities_PanelIdGiven_HourlyElectricitiesReturned() throws Exception {
 		// We construct and make a GET request that should return 3 JSON hourly
 		// electricity objects starting from page 0.
-		ResponseEntity<List<HourlyElectricity>> response = template.exchange("/api/panels/1/hourly?page=0&size=3",
-				HttpMethod.GET, null, new ParameterizedTypeReference<List<HourlyElectricity>>() {
+		ResponseEntity<List<HourlyElectricityDto>> response = template.exchange("/api/panels/1/hourly?page=0&size=3",
+				HttpMethod.GET, null, new ParameterizedTypeReference<List<HourlyElectricityDto>>() {
 				});
 
 		Assert.assertEquals(200, response.getStatusCode().value());
 
-		List<HourlyElectricity> hourlyElectricities = response.getBody();
+		List<HourlyElectricityDto> hourlyElectricities = response.getBody();
 		Assert.assertNotNull(hourlyElectricities);
 		Assert.assertEquals(3, hourlyElectricities.size());
+
+		Assert.assertTrue(
+				RegexUtil.endsWithDigit("/api/panels/1/hourly/", hourlyElectricities.get(0).getUri().toString()));
+		Assert.assertTrue(
+				RegexUtil.endsWithDigit("/api/panels/1/hourly/", hourlyElectricities.get(1).getUri().toString()));
+		Assert.assertTrue(
+				RegexUtil.endsWithDigit("/api/panels/1/hourly/", hourlyElectricities.get(2).getUri().toString()));
 	}
 
 	@Test

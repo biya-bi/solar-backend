@@ -9,10 +9,13 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.rainbow.solar.RequestMappings;
 import org.rainbow.solar.model.DailyElectricity;
 import org.rainbow.solar.model.HourlyElectricity;
 import org.rainbow.solar.model.Panel;
+import org.rainbow.solar.rest.converter.HourlyElectricityDtoConverter;
 import org.rainbow.solar.rest.converter.PanelDtoConverter;
+import org.rainbow.solar.rest.dto.HourlyElectricityDto;
 import org.rainbow.solar.rest.dto.PanelDto;
 import org.rainbow.solar.rest.err.HourlyElectricityNotFoundError;
 import org.rainbow.solar.rest.err.PanelNotFoundError;
@@ -41,9 +44,8 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @CrossOrigin
 @RestController
-@RequestMapping("/api/panels")
+@RequestMapping(RequestMappings.PANEL_ENDPOINT)
 public class PanelController {
-
 	@Autowired
 	private PanelService panelService;
 
@@ -171,7 +173,9 @@ public class PanelController {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
 		Page<HourlyElectricity> page = hourlyElectricityService.getHourlyElectricities(id, pageable);
-		return ResponseEntity.ok(page.getContent());
+		List<HourlyElectricityDto> hourlyElectricityDtos = new ArrayList<>();
+		page.getContent().forEach(x -> hourlyElectricityDtos.add(HourlyElectricityDtoConverter.toDto(id, x)));
+		return ResponseEntity.ok(hourlyElectricityDtos);
 	}
 
 	/**
