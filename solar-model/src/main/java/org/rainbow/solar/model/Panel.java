@@ -38,6 +38,10 @@ public class Panel implements Serializable {
 	public Panel() {
 	}
 
+	public Panel(Long id) {
+		this.id = id;
+	}
+
 	public Panel(String serial, Double latitude, Double longitude, String brand, UnitOfMeasure unitOfMeasure) {
 		this(null, serial, latitude, longitude, brand, unitOfMeasure);
 	}
@@ -142,7 +146,7 @@ public class Panel implements Serializable {
 	 */
 	@Override
 	public String toString() {
-		return "PanelDto [id=" + id + ", serial=" + serial + ", latitude=" + latitude + ", longitude=" + longitude
+		return "Panel [id=" + id + ", serial=" + serial + ", latitude=" + latitude + ", longitude=" + longitude
 				+ ", brand=" + brand + ", unitOfMeasure=" + unitOfMeasure + "]";
 	}
 }

@@ -19,15 +19,15 @@ public class HourlyElectricityDtoConverter {
 
 	public static HourlyElectricityDto toDto(Long panelId, HourlyElectricity hourlyElectricity) {
 		ServletUriComponentsBuilder builder = ServletUriComponentsBuilder.fromCurrentContextPath();
-		URI uri = builder.path(RequestMappings.PANEL_ENDPOINT).path(panelId.toString())
-				.path(HOURLY_URI_SUFFIX).path("/").path(hourlyElectricity.getId().toString()).build().toUri();
+		URI uri = builder.path(RequestMappings.PANEL_ENDPOINT).path(panelId.toString()).path(HOURLY_URI_SUFFIX)
+				.path("/").path(hourlyElectricity.getId().toString()).build().toUri();
 		return new HourlyElectricityDto(uri, hourlyElectricity.getGeneratedElectricity(),
 				hourlyElectricity.getReadingAt());
 	}
 
 	public static HourlyElectricity fromDto(HourlyElectricityDto hourlyElectricityDto) {
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setReadingAt(hourlyElectricityDto.getReadingAt());
-		return hourlyElectricity;
+		return new HourlyElectricity(hourlyElectricityDto.getGeneratedElectricity(),
+				hourlyElectricityDto.getReadingAt());
+
 	}
 }

@@ -154,9 +154,7 @@ public class PanelController {
 					.body(new HourlyElectricityNotFoundError(hourlyElectricityId));
 		}
 
-		Panel panel = new Panel();
-		panel.setId(id);
-		hourlyElectricity.setPanel(panel);
+		hourlyElectricity.setPanel(new Panel(id));
 		hourlyElectricityService.delete(hourlyElectricity);
 		return ResponseEntity.noContent().build();
 	}

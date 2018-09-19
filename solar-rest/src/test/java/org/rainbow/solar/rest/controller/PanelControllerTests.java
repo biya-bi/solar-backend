@@ -423,13 +423,12 @@ public class PanelControllerTests {
 
 		LocalDateTime now = LocalDateTime.now();
 
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(1L);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(now);
-		stub(hourlyElectricityService.create(any())).toReturn(hourlyElectricity);
+		Panel panel = new Panel(panelId);
 
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(hourlyElectricityService.create(any()))
+				.toReturn(new HourlyElectricity(1L, panel, 500L, LocalDateTime.now()));
+
+		stub(panelService.getById(panelId)).toReturn(panel);
 
 		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500)
 				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
@@ -481,7 +480,7 @@ public class PanelControllerTests {
 		String uri = String.format("/api/panels/%s/hourly", panelId);
 
 		stub(hourlyElectricityService.create(any())).toThrow(new HourlyElectricityReadingDateRequiredException());
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.getById(panelId)).toReturn(new Panel(panelId));
 
 		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500).build();
 
@@ -510,7 +509,7 @@ public class PanelControllerTests {
 		String uri = String.format("/api/panels/%s/hourly", panelId);
 
 		stub(hourlyElectricityService.create(any())).toThrow(new HourlyElectricityReadingRequiredException());
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.getById(panelId)).toReturn(new Panel(panelId));
 
 		String requestBody = new JsonBuilder()
 				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
@@ -541,14 +540,13 @@ public class PanelControllerTests {
 
 		LocalDateTime now = LocalDateTime.now();
 
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(1L);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(now);
-		stub(hourlyElectricityService.update(any())).toReturn(hourlyElectricity);
+		Panel panel = new Panel(panelId);
+
+		stub(hourlyElectricityService.update(any()))
+				.toReturn((new HourlyElectricity(hourlyElectricityId, panel, 500L, LocalDateTime.now())));
 		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.getById(panelId)).toReturn(panel);
 
 		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500)
 				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
@@ -604,7 +602,7 @@ public class PanelControllerTests {
 		stub(hourlyElectricityService.update(any())).toThrow(new HourlyElectricityReadingDateRequiredException());
 		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.getById(panelId)).toReturn(new Panel(panelId));
 
 		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500).build();
 
@@ -636,7 +634,7 @@ public class PanelControllerTests {
 		stub(hourlyElectricityService.update(any())).toThrow(new HourlyElectricityReadingRequiredException());
 		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.getById(panelId)).toReturn(new Panel(panelId));
 
 		String requestBody = new JsonBuilder()
 				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
@@ -667,7 +665,7 @@ public class PanelControllerTests {
 
 		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(false);
 
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.getById(panelId)).toReturn(new Panel(panelId));
 
 		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500).build();
 
@@ -698,7 +696,7 @@ public class PanelControllerTests {
 				.toThrow(new HourlyElectricityPanelMismatchException(hourlyElectricityId, panelId));
 		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.getById(panelId)).toReturn(new Panel(panelId));
 
 		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500)
 				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
@@ -731,14 +729,13 @@ public class PanelControllerTests {
 
 		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(1L);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		stub(hourlyElectricityService.getById(hourlyElectricityId)).toReturn(hourlyElectricity);
+		Panel panel = new Panel(panelId);
+
+		stub(hourlyElectricityService.getById(hourlyElectricityId))
+				.toReturn((new HourlyElectricity(hourlyElectricityId, panel, 500L, LocalDateTime.now())));
 		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.getById(panelId)).toReturn(panel);
 		stub(panelService.exists(panelId)).toReturn(true);
 
 		MvcResult result = mockMvc.perform(delete(uri)).andReturn();
@@ -758,7 +755,7 @@ public class PanelControllerTests {
 
 		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		stub(hourlyElectricityService.getById(any())).toReturn(new HourlyElectricity());
+		stub(hourlyElectricityService.getById(any())).toReturn(new HourlyElectricity(hourlyElectricityId));
 		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
 		stub(panelService.exists(panelId)).toReturn(false);
@@ -807,11 +804,8 @@ public class PanelControllerTests {
 
 		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(1L);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		stub(hourlyElectricityService.getById(hourlyElectricityId)).toReturn(hourlyElectricity);
+		stub(hourlyElectricityService.getById(hourlyElectricityId))
+				.toReturn(new HourlyElectricity(hourlyElectricityId, new Panel(panelId), 500L, LocalDateTime.now()));
 
 		doThrow(new HourlyElectricityPanelMismatchException(hourlyElectricityId, panelId))
 				.when(hourlyElectricityService).delete(any());
@@ -837,7 +831,6 @@ public class PanelControllerTests {
 		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
 		verify(hourlyElectricityService).delete(argumentCaptor.capture());
 	}
-
 
 	@Test
 	public void getAllDailyElectricityFromYesterday_PanelIdGiven_DailyElectricitiesReturned() throws Exception {

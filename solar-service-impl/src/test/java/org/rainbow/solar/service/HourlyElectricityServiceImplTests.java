@@ -46,12 +46,7 @@ public class HourlyElectricityServiceImplTests {
 
 	@Test
 	public void create_HourlyElectricityIsGiven_HourlyElectricityCreated() {
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		hourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
-
-		hourlyElectricityService.create(hourlyElectricity);
+		hourlyElectricityService.create(new HourlyElectricity(new Panel(1L), 500L, LocalDateTime.now()));
 
 		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
 		verify(hourlyElectricityRepository).save(argumentCaptor.capture());
@@ -59,12 +54,8 @@ public class HourlyElectricityServiceImplTests {
 
 	@Test(expected = HourlyElectricityReadingDateRequiredException.class)
 	public void create_ReadingAtIsNotSpecified_HourlyElectricityReadingDateRequiredExceptionThrown() {
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
-
 		try {
-			hourlyElectricityService.create(hourlyElectricity);
+			hourlyElectricityService.create(new HourlyElectricity(new Panel(1L), 500L, null));
 		} catch (HourlyElectricityReadingDateRequiredException e) {
 			Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.date.required"),
 					e.getMessage());
@@ -74,12 +65,8 @@ public class HourlyElectricityServiceImplTests {
 
 	@Test(expected = HourlyElectricityReadingRequiredException.class)
 	public void create_GeneratedElectricityIsNotSpecified_HourlyElectricityReadingRequiredExceptionThrown() {
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		hourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
-
 		try {
-			hourlyElectricityService.create(hourlyElectricity);
+			hourlyElectricityService.create(new HourlyElectricity(new Panel(1L), null, LocalDateTime.now()));
 		} catch (HourlyElectricityReadingRequiredException e) {
 			Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.required"),
 					e.getMessage());
@@ -89,11 +76,7 @@ public class HourlyElectricityServiceImplTests {
 
 	@Test
 	public void update_HourlyElectricityIsGiven_HourlyElectricityUpdated() {
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(1L);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		hourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
+		HourlyElectricity hourlyElectricity = new HourlyElectricity(1L, new Panel(1L), 500L, LocalDateTime.now());
 
 		stub(hourlyElectricityRepository.findById(1L)).toReturn(hourlyElectricity);
 
@@ -105,10 +88,7 @@ public class HourlyElectricityServiceImplTests {
 
 	@Test(expected = HourlyElectricityReadingDateRequiredException.class)
 	public void update_ReadingAtIsNotSpecified_HourlyElectricityReadingDateRequiredExceptionThrown() {
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(1L);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
+		HourlyElectricity hourlyElectricity = new HourlyElectricity(1L, new Panel(1L), 500L, null);
 
 		stub(hourlyElectricityRepository.findById(1L)).toReturn(hourlyElectricity);
 
@@ -123,9 +103,7 @@ public class HourlyElectricityServiceImplTests {
 
 	@Test(expected = HourlyElectricityReadingRequiredException.class)
 	public void update_GeneratedElectricityIsNotSpecified_HourlyElectricityReadingRequiredExceptionThrown() {
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		hourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
+		HourlyElectricity hourlyElectricity = new HourlyElectricity(1L, new Panel(1L), null, LocalDateTime.now());
 
 		try {
 			hourlyElectricityService.update(hourlyElectricity);
@@ -141,17 +119,10 @@ public class HourlyElectricityServiceImplTests {
 		Long hourlyElectricityId = 1L;
 		Long panelId = 2L;
 
-		HourlyElectricity existingHourlyElectricity = new HourlyElectricity();
-		existingHourlyElectricity.setId(hourlyElectricityId);
-		existingHourlyElectricity.setGeneratedElectricity(500L);
-		existingHourlyElectricity.setReadingAt(LocalDateTime.now());
-		existingHourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
+		HourlyElectricity existingHourlyElectricity = new HourlyElectricity(hourlyElectricityId, new Panel(1L), 500L,
+				LocalDateTime.now());
 
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(hourlyElectricityId);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		hourlyElectricity.setPanel(new Panel(panelId, "100002", 70.000001, 70.000001, "tesla", UnitOfMeasure.KW));
+		HourlyElectricity hourlyElectricity = new HourlyElectricity(hourlyElectricityId, new Panel(panelId), 2000L, LocalDateTime.now());
 
 		stub(hourlyElectricityRepository.findById(hourlyElectricityId)).toReturn(existingHourlyElectricity);
 
@@ -170,11 +141,7 @@ public class HourlyElectricityServiceImplTests {
 
 	@Test
 	public void delete_HourlyElectricityIsGiven_HourlyElectricityDeleted() {
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(1L);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		hourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
+		HourlyElectricity hourlyElectricity = new HourlyElectricity(1L, new Panel(1L), 500L, LocalDateTime.now());
 
 		hourlyElectricityService.delete(hourlyElectricity);
 
@@ -188,17 +155,11 @@ public class HourlyElectricityServiceImplTests {
 		Long hourlyElectricityId = 1L;
 		Long panelId = 2L;
 
-		HourlyElectricity existingHourlyElectricity = new HourlyElectricity();
-		existingHourlyElectricity.setId(hourlyElectricityId);
-		existingHourlyElectricity.setGeneratedElectricity(500L);
-		existingHourlyElectricity.setReadingAt(LocalDateTime.now());
-		existingHourlyElectricity.setPanel(new Panel(1L, "100001", 80.123456, 81.654322, "tesla", UnitOfMeasure.KW));
+		HourlyElectricity existingHourlyElectricity = new HourlyElectricity(hourlyElectricityId, new Panel(1L),
+				500L, LocalDateTime.now());
 
-		HourlyElectricity hourlyElectricity = new HourlyElectricity();
-		hourlyElectricity.setId(hourlyElectricityId);
-		hourlyElectricity.setGeneratedElectricity(500L);
-		hourlyElectricity.setReadingAt(LocalDateTime.now());
-		hourlyElectricity.setPanel(new Panel(panelId, "100002", 70.000001, 70.000001, "tesla", UnitOfMeasure.KW));
+		HourlyElectricity hourlyElectricity = new HourlyElectricity(hourlyElectricityId, new Panel(panelId), 2000L,
+				LocalDateTime.now());
 
 		stub(hourlyElectricityRepository.findById(hourlyElectricityId)).toReturn(existingHourlyElectricity);
 
@@ -286,69 +247,19 @@ public class HourlyElectricityServiceImplTests {
 	}
 
 	private List<HourlyElectricity> constructHourlyElectricitiesThreeDaysBack(LocalDateTime dateTime, Panel panel) {
-		HourlyElectricity hourlyElectricity1 = new HourlyElectricity();
-		hourlyElectricity1.setGeneratedElectricity(900L);
-		hourlyElectricity1.setReadingAt(dateTime.minusHours(72));
-		hourlyElectricity1.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity2 = new HourlyElectricity();
-		hourlyElectricity2.setGeneratedElectricity(950L);
-		hourlyElectricity2.setReadingAt(dateTime.minusHours(71));
-		hourlyElectricity2.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity3 = new HourlyElectricity();
-		hourlyElectricity3.setGeneratedElectricity(800L);
-		hourlyElectricity3.setReadingAt(dateTime.minusHours(70));
-		hourlyElectricity3.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity4 = new HourlyElectricity();
-		hourlyElectricity4.setGeneratedElectricity(925L);
-		hourlyElectricity4.setReadingAt(dateTime.minusHours(69));
-		hourlyElectricity4.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity5 = new HourlyElectricity();
-		hourlyElectricity5.setGeneratedElectricity(725L);
-		hourlyElectricity5.setReadingAt(dateTime.minusHours(48));
-		hourlyElectricity5.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity6 = new HourlyElectricity();
-		hourlyElectricity6.setGeneratedElectricity(850L);
-		hourlyElectricity6.setReadingAt(dateTime.minusHours(47));
-		hourlyElectricity6.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity7 = new HourlyElectricity();
-		hourlyElectricity7.setGeneratedElectricity(750L);
-		hourlyElectricity7.setReadingAt(dateTime.minusHours(46));
-		hourlyElectricity7.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity8 = new HourlyElectricity();
-		hourlyElectricity8.setGeneratedElectricity(700L);
-		hourlyElectricity8.setReadingAt(dateTime.minusHours(45));
-		hourlyElectricity8.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity9 = new HourlyElectricity();
-		hourlyElectricity9.setGeneratedElectricity(1000L);
-		hourlyElectricity9.setReadingAt(dateTime.minusHours(24));
-		hourlyElectricity9.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity10 = new HourlyElectricity();
-		hourlyElectricity10.setGeneratedElectricity(975L);
-		hourlyElectricity10.setReadingAt(dateTime.minusHours(23));
-		hourlyElectricity10.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity11 = new HourlyElectricity();
-		hourlyElectricity11.setGeneratedElectricity(1225L);
-		hourlyElectricity11.setReadingAt(dateTime.minusHours(22));
-		hourlyElectricity11.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity12 = new HourlyElectricity();
-		hourlyElectricity12.setGeneratedElectricity(1500L);
-		hourlyElectricity12.setReadingAt(dateTime.minusHours(21));
-		hourlyElectricity12.setPanel(panel);
-
-		List<HourlyElectricity> hourlyElectricities = Arrays.asList(hourlyElectricity1, hourlyElectricity2,
-				hourlyElectricity3, hourlyElectricity4, hourlyElectricity5, hourlyElectricity6, hourlyElectricity7,
-				hourlyElectricity8, hourlyElectricity9, hourlyElectricity10, hourlyElectricity11, hourlyElectricity12);
+		List<HourlyElectricity> hourlyElectricities = Arrays.asList(
+				new HourlyElectricity(panel, 900L, dateTime.minusHours(72)),
+				new HourlyElectricity(panel, 950L, dateTime.minusHours(71)),
+				new HourlyElectricity(panel, 800L, dateTime.minusHours(70)),
+				new HourlyElectricity(panel, 925L, dateTime.minusHours(69)),
+				new HourlyElectricity(panel, 725L, dateTime.minusHours(48)),
+				new HourlyElectricity(panel, 850L, dateTime.minusHours(47)),
+				new HourlyElectricity(panel, 750L, dateTime.minusHours(46)),
+				new HourlyElectricity(panel, 700L, dateTime.minusHours(45)),
+				new HourlyElectricity(panel, 1000L, dateTime.minusHours(24)),
+				new HourlyElectricity(panel, 975L, dateTime.minusHours(23)),
+				new HourlyElectricity(panel, 1225L, dateTime.minusHours(22)),
+				new HourlyElectricity(panel, 1500L, dateTime.minusHours(21)));
 
 		// Sort the hourly electricities in descending order of generation date.
 		Collections.sort(hourlyElectricities, (x, y) -> -x.getReadingAt().compareTo(y.getReadingAt()));

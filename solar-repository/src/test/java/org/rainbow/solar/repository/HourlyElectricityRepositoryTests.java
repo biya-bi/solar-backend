@@ -92,73 +92,18 @@ public class HourlyElectricityRepositoryTests extends RepositoryTests {
 	}
 
 	private List<HourlyElectricity> constructHourlyElectricities(LocalDateTime dateTime, Panel panel) {
-		HourlyElectricity hourlyElectricity1 = new HourlyElectricity();
-		hourlyElectricity1.setGeneratedElectricity(900L);
-		hourlyElectricity1.setReadingAt(dateTime.minusHours(72));
-		hourlyElectricity1.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity2 = new HourlyElectricity();
-		hourlyElectricity2.setGeneratedElectricity(950L);
-		hourlyElectricity2.setReadingAt(dateTime.minusHours(71));
-		hourlyElectricity2.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity3 = new HourlyElectricity();
-		hourlyElectricity3.setGeneratedElectricity(800L);
-		hourlyElectricity3.setReadingAt(dateTime.minusHours(70));
-		hourlyElectricity3.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity4 = new HourlyElectricity();
-		hourlyElectricity4.setGeneratedElectricity(925L);
-		hourlyElectricity4.setReadingAt(dateTime.minusHours(69));
-		hourlyElectricity4.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity5 = new HourlyElectricity();
-		hourlyElectricity5.setGeneratedElectricity(725L);
-		hourlyElectricity5.setReadingAt(dateTime.minusHours(48));
-		hourlyElectricity5.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity6 = new HourlyElectricity();
-		hourlyElectricity6.setGeneratedElectricity(850L);
-		hourlyElectricity6.setReadingAt(dateTime.minusHours(47));
-		hourlyElectricity6.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity7 = new HourlyElectricity();
-		hourlyElectricity7.setGeneratedElectricity(750L);
-		hourlyElectricity7.setReadingAt(dateTime.minusHours(46));
-		hourlyElectricity7.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity8 = new HourlyElectricity();
-		hourlyElectricity8.setGeneratedElectricity(700L);
-		hourlyElectricity8.setReadingAt(dateTime.minusHours(45));
-		hourlyElectricity8.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity9 = new HourlyElectricity();
-		hourlyElectricity9.setGeneratedElectricity(1000L);
-		hourlyElectricity9.setReadingAt(dateTime.minusHours(24));
-		hourlyElectricity9.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity10 = new HourlyElectricity();
-		hourlyElectricity10.setGeneratedElectricity(975L);
-		hourlyElectricity10.setReadingAt(dateTime.minusHours(23));
-		hourlyElectricity10.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity11 = new HourlyElectricity();
-		hourlyElectricity11.setGeneratedElectricity(1225L);
-		hourlyElectricity11.setReadingAt(dateTime.minusHours(22));
-		hourlyElectricity11.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity12 = new HourlyElectricity();
-		hourlyElectricity12.setGeneratedElectricity(1500L);
-		hourlyElectricity12.setReadingAt(dateTime.minusHours(21));
-		hourlyElectricity12.setPanel(panel);
-
-		HourlyElectricity hourlyElectricity13 = new HourlyElectricity();
-		hourlyElectricity13.setGeneratedElectricity(750L);
-		hourlyElectricity13.setReadingAt(dateTime);
-		hourlyElectricity13.setPanel(panel);
-
-		return Arrays.asList(hourlyElectricity1, hourlyElectricity2, hourlyElectricity3, hourlyElectricity4,
-				hourlyElectricity5, hourlyElectricity6, hourlyElectricity7, hourlyElectricity8, hourlyElectricity9,
-				hourlyElectricity10, hourlyElectricity11, hourlyElectricity12, hourlyElectricity13);
+		return Arrays.asList(new HourlyElectricity(panel, 900L, dateTime.minusHours(72)),
+				new HourlyElectricity(panel, 950L, dateTime.minusHours(71)),
+				new HourlyElectricity(panel, 800L, dateTime.minusHours(70)),
+				new HourlyElectricity(panel, 925L, dateTime.minusHours(69)),
+				new HourlyElectricity(panel, 725L, dateTime.minusHours(48)),
+				new HourlyElectricity(panel, 850L, dateTime.minusHours(47)),
+				new HourlyElectricity(panel, 750L, dateTime.minusHours(46)),
+				new HourlyElectricity(panel, 700L, dateTime.minusHours(45)),
+				new HourlyElectricity(panel, 1000L, dateTime.minusHours(24)),
+				new HourlyElectricity(panel, 925L, dateTime.minusHours(23)),
+				new HourlyElectricity(panel, 1225L, dateTime.minusHours(22)),
+				new HourlyElectricity(panel, 1500L, dateTime.minusHours(21)),
+				new HourlyElectricity(panel, 750L, dateTime));
 	}
 }

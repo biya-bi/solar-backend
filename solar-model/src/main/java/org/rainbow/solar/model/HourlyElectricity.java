@@ -33,6 +33,28 @@ public class HourlyElectricity implements Serializable {
 	private Long generatedElectricity;
 	private LocalDateTime readingAt;
 
+	public HourlyElectricity() {
+	}
+
+	public HourlyElectricity(Long id) {
+		this.id = id;
+	}
+
+	public HourlyElectricity(Long generatedElectricity, LocalDateTime readingAt) {
+		this(null, null, generatedElectricity, readingAt);
+	}
+
+	public HourlyElectricity(Panel panel, Long generatedElectricity, LocalDateTime readingAt) {
+		this(null, panel, generatedElectricity, readingAt);
+	}
+
+	public HourlyElectricity(Long id, Panel panel, Long generatedElectricity, LocalDateTime readingAt) {
+		this.id = id;
+		this.panel = panel;
+		this.generatedElectricity = generatedElectricity;
+		this.readingAt = readingAt;
+	}
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	public Long getId() {
