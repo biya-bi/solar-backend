@@ -3,26 +3,39 @@
  */
 package org.rainbow.solar.rest.controller;
 
-import java.net.URI;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.stub;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 
-import javax.sql.DataSource;
-
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.rainbow.solar.model.DailyElectricity;
+import org.rainbow.solar.model.HourlyElectricity;
 import org.rainbow.solar.model.Panel;
 import org.rainbow.solar.model.UnitOfMeasure;
-import org.rainbow.solar.rest.dto.HourlyElectricityDto;
 import org.rainbow.solar.rest.dto.PanelDto;
 import org.rainbow.solar.rest.err.HourlyElectricityNotFoundError;
+import org.rainbow.solar.rest.err.HourlyElectricityPanelMismatchError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingDateRequiredError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingRequiredError;
 import org.rainbow.solar.rest.err.PanelNotFoundError;
@@ -30,21 +43,26 @@ import org.rainbow.solar.rest.err.PanelSerialDuplicateError;
 import org.rainbow.solar.rest.err.PanelSerialMaxLengthExceededError;
 import org.rainbow.solar.rest.err.PanelSerialRequiredError;
 import org.rainbow.solar.rest.err.SolarErrorCode;
-import org.rainbow.solar.rest.util.DatabaseUtil;
+import org.rainbow.solar.rest.handler.GlobalExceptionHandler;
 import org.rainbow.solar.rest.util.ErrorMessagesResourceBundle;
-import org.rainbow.solar.rest.util.JsonHttpEntityBuilder;
+import org.rainbow.solar.rest.util.JsonBuilder;
+import org.rainbow.solar.rest.util.JsonConverter;
 import org.rainbow.solar.rest.util.RegexUtil;
+import org.rainbow.solar.service.HourlyElectricityService;
+import org.rainbow.solar.service.PanelService;
+import org.rainbow.solar.service.exc.HourlyElectricityPanelMismatchException;
+import org.rainbow.solar.service.exc.HourlyElectricityReadingDateRequiredException;
+import org.rainbow.solar.service.exc.HourlyElectricityReadingRequiredException;
+import org.rainbow.solar.service.exc.PanelSerialDuplicateException;
+import org.rainbow.solar.service.exc.PanelSerialMaxLengthExceededException;
+import org.rainbow.solar.service.exc.PanelSerialRequiredException;
 import org.rainbow.solar.service.util.ExceptionMessagesResourceBundle;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /**
  * This class tests APIs in {@link PanelController}
@@ -52,214 +70,243 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
  * @author biya-bi
  *
  */
-@RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@RunWith(MockitoJUnitRunner.class)
 public class PanelControllerTests {
 
-	@Mock
+	private MockMvc mockMvc;
+
+	@InjectMocks
 	private PanelController panelController;
 
-	@Autowired
-	private TestRestTemplate template;
+	@Mock
+	private PanelService panelService;
 
-	@Autowired
-	private DataSource dataSource;
+	@Mock
+	private HourlyElectricityService hourlyElectricityService;
 
 	@Before
 	public void setup() throws Exception {
-		DatabaseUtil.execute(dataSource, new ClassPathResource("sql/delete_from_tables.sql").getFile(),
-				new ClassPathResource("sql/insert_panels.sql").getFile(),
-				new ClassPathResource("sql/insert_hourly_electricities.sql").getFile());
-	}
-
-	@After
-	public void cleanup() throws Exception {
-		// Each test should clear the panel table to leave it in a state that will not
-		// affect other tests.
-		DatabaseUtil.execute(dataSource, new ClassPathResource("sql/delete_from_tables.sql").getFile());
+		mockMvc = MockMvcBuilders.standaloneSetup(panelController).setControllerAdvice(new GlobalExceptionHandler())
+				.build();
 	}
 
 	@Test
-	public void createPanel_AllFieldsAreValid_PanelCreated() {
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", "232323")
-				.setProperty("latitude", 54.123232).setProperty("longitude", 54.123232).setProperty("brand", "tesla")
-				.setProperty("unitOfMeasure", "KW").build();
+	public void createPanel_AllFieldsAreValid_PanelCreated() throws Exception {
+		Panel panel = new Panel(1L, "232323", 54.123232, 54.123232, "tesla", UnitOfMeasure.KW);
 
-		ResponseEntity<?> response = template.postForEntity("/api/panels", panel, Object.class);
+		stub(panelService.create(any())).toReturn(panel);
 
-		Assert.assertEquals(201, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(
+				post("/api/panels").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		URI location = response.getHeaders().getLocation();
+		MockHttpServletResponse response = result.getResponse();
 
+		Assert.assertEquals(HttpStatus.CREATED.value(), response.getStatus());
+
+		String location = response.getHeader("Location");
 		Assert.assertNotNull(location);
-		Assert.assertTrue(RegexUtil.endsWithDigit("/api/panels/", location.toString()));
+		Assert.assertTrue(RegexUtil.endsWithDigit("/api/panels/", location));
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).create(argumentCaptor.capture());
 	}
 
 	@Test
-	public void createPanel_SerialNumberIsEmpty_UnprocessableEntityErrorReturned() {
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", "")
-				.setProperty("latitude", "75.645289").setProperty("longitude", "75.147852")
-				.setProperty("brand", "suntech").setProperty("unitOfMeasure", "KW").build();
+	public void createPanel_SerialNumberIsEmpty_UnprocessableEntityErrorReturned() throws Exception {
+		stub(panelService.create(any())).toThrow(new PanelSerialRequiredException());
 
-		ResponseEntity<PanelSerialRequiredError> response = template.postForEntity("/api/panels", panel,
-				PanelSerialRequiredError.class);
+		Panel panel = new Panel("", 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(
+				post("/api/panels").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		PanelSerialRequiredError error = response.getBody();
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		PanelSerialRequiredError error = JsonConverter.fromJson(PanelSerialRequiredError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_REQUIRED.value(), error.getCode());
 		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("panel.serial.required"), error.getMessage());
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).create(argumentCaptor.capture());
 	}
 
 	@Test
-	public void createPanel_SerialNumberLengthIsGreaterThanMaximum_UnprocessableEntityErrorReturned() {
+	public void createPanel_SerialNumberLengthIsGreaterThanMaximum_UnprocessableEntityErrorReturned() throws Exception {
 		String serial = "1234567890123456789";
+		int maxLength = 16;
 
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", serial)
-				.setProperty("latitude", "75.645289").setProperty("longitude", "75.147852")
-				.setProperty("brand", "suntech").setProperty("unitOfMeasure", "KW").build();
+		stub(panelService.create(any())).toThrow(new PanelSerialMaxLengthExceededException(serial, maxLength));
 
-		ResponseEntity<PanelSerialMaxLengthExceededError> response = template.postForEntity("/api/panels", panel,
-				PanelSerialMaxLengthExceededError.class);
+		Panel panel = new Panel(serial, 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(
+				post("/api/panels").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		PanelSerialMaxLengthExceededError error = response.getBody();
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		PanelSerialMaxLengthExceededError error = JsonConverter.fromJson(PanelSerialMaxLengthExceededError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_MAX_LENGTH_EXCEEDED.value(), error.getCode());
-		Assert.assertEquals(
-				String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.length.too.long"), serial, 16),
-				error.getMessage());
+		Assert.assertEquals(String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.length.too.long"),
+				serial, maxLength), error.getMessage());
 		Assert.assertEquals(serial, error.getSerial());
-		Assert.assertEquals(Integer.valueOf(16), Integer.valueOf(error.getMaxLength()));
+		Assert.assertEquals(Integer.valueOf(maxLength), Integer.valueOf(error.getMaxLength()));
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).create(argumentCaptor.capture());
 	}
 
 	@Test
-	public void createPanel_AnotherPanelHasSameSerial_UnprocessableEntityErrorReturned() {
+	public void createPanel_AnotherPanelHasSameSerial_UnprocessableEntityErrorReturned() throws Exception {
 		String serial = "100001";
 
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", serial)
-				.setProperty("latitude", "80.446189").setProperty("longitude", "85.756328")
-				.setProperty("brand", "suntech").setProperty("unitOfMeasure", "KW").build();
+		stub(panelService.create(any())).toThrow(new PanelSerialDuplicateException(serial));
 
-		ResponseEntity<PanelSerialDuplicateError> response = template.postForEntity("/api/panels", panel,
-				PanelSerialDuplicateError.class);
+		Panel panel = new Panel(serial, 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(
+				post("/api/panels").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		PanelSerialDuplicateError error = response.getBody();
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		PanelSerialDuplicateError error = JsonConverter.fromJson(PanelSerialDuplicateError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_DUPLICATE.value(), error.getCode());
 		Assert.assertEquals(String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.duplicate"), serial),
 				error.getMessage());
 		Assert.assertEquals(serial, error.getSerial());
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).create(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updatePanel_AllFieldsAreValid_PanelUpdated() {
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", "22222")
-				.setProperty("latitude", 80.123456).setProperty("longitude", 81.654321).setProperty("brand", "tesla")
-				.setProperty("unitOfMeasure", "KW").build();
+	public void updatePanel_AllFieldsAreValid_PanelUpdated() throws Exception {
+		Panel panel = new Panel(1L, "22222", 80.123456, 81.654321, "tesla", UnitOfMeasure.KW);
 
-		ResponseEntity<Panel> response = template.exchange("/api/panels/2", HttpMethod.PUT, panel, Panel.class);
+		stub(panelService.update(any())).toReturn(panel);
+		stub(panelService.exists(panel.getId())).toReturn(true);
 
-		Assert.assertEquals(204, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(
+				put("/api/panels/1").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.NO_CONTENT.value(), response.getStatus());
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).update(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updatePanel_SerialNumberIsEmpty_UnprocessableEntityErrorReturned() {
-		Long panelId = 3L;
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", "")
-				.setProperty("latitude", "75.645289").setProperty("longitude", "75.147852")
-				.setProperty("unitOfMeasure", "KW").setProperty("brand", "suntech").build();
+	public void updatePanel_SerialNumberIsEmpty_UnprocessableEntityErrorReturned() throws Exception {
+		stub(panelService.update(any())).toThrow(new PanelSerialRequiredException());
 
-		ResponseEntity<PanelSerialDuplicateError> response = template.exchange("/api/panels/" + panelId, HttpMethod.PUT,
-				panel, PanelSerialDuplicateError.class);
+		Panel panel = new Panel("", 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
+		stub(panelService.exists(1L)).toReturn(true);
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(
+				put("/api/panels/1").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		PanelSerialDuplicateError error = response.getBody();
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		PanelSerialRequiredError error = JsonConverter.fromJson(PanelSerialRequiredError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_REQUIRED.value(), error.getCode());
 		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("panel.serial.required"), error.getMessage());
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).update(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updatePanel_SerialNumberLengthIsGreaterThanMaximum_UnprocessableEntityErrorReturned() {
+	public void updatePanel_SerialNumberLengthIsGreaterThanMaximum_UnprocessableEntityErrorReturned() throws Exception {
 		String serial = "1234567890123456789";
+		int maxLength = 16;
 
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", serial)
-				.setProperty("latitude", "75.645289").setProperty("longitude", "75.147852")
-				.setProperty("unitOfMeasure", "KW").setProperty("brand", "suntech").build();
+		stub(panelService.update(any())).toThrow(new PanelSerialMaxLengthExceededException(serial, maxLength));
+		stub(panelService.exists(1L)).toReturn(true);
 
-		ResponseEntity<PanelSerialMaxLengthExceededError> response = template.exchange("/api/panels/3", HttpMethod.PUT,
-				panel, PanelSerialMaxLengthExceededError.class);
+		Panel panel = new Panel(serial, 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(
+				put("/api/panels/1").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		PanelSerialMaxLengthExceededError error = response.getBody();
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		PanelSerialMaxLengthExceededError error = JsonConverter.fromJson(PanelSerialMaxLengthExceededError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_MAX_LENGTH_EXCEEDED.value(), error.getCode());
-		Assert.assertEquals(
-				String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.length.too.long"), serial, 16),
-				error.getMessage());
+		Assert.assertEquals(String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.length.too.long"),
+				serial, maxLength), error.getMessage());
 		Assert.assertEquals(serial, error.getSerial());
-		Assert.assertEquals(Integer.valueOf(16), Integer.valueOf(error.getMaxLength()));
+		Assert.assertEquals(Integer.valueOf(maxLength), Integer.valueOf(error.getMaxLength()));
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).update(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updatePanel_AnotherPanelHasSameSerial_UnprocessableEntityErrorReturned() {
+	public void updatePanel_AnotherPanelHasSameSerial_UnprocessableEntityErrorReturned() throws Exception {
 		String serial = "100001";
 
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", serial)
-				.setProperty("latitude", "80.446189").setProperty("longitude", "85.756328")
-				.setProperty("unitOfMeasure", "KW").setProperty("brand", "suntech").build();
+		stub(panelService.update(any())).toThrow(new PanelSerialDuplicateException(serial));
+		stub(panelService.exists(1L)).toReturn(true);
 
-		ResponseEntity<PanelSerialDuplicateError> response = template.exchange("/api/panels/3", HttpMethod.PUT, panel,
-				PanelSerialDuplicateError.class);
+		Panel panel = new Panel(serial, 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(
+				put("/api/panels/1").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		PanelSerialDuplicateError error = response.getBody();
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		PanelSerialDuplicateError error = JsonConverter.fromJson(PanelSerialDuplicateError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_DUPLICATE.value(), error.getCode());
 		Assert.assertEquals(String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.duplicate"), serial),
 				error.getMessage());
 		Assert.assertEquals(serial, error.getSerial());
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).update(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updatePanel_PanelDoesNotExist_NotFoundErrorReturned() {
-		HttpEntity<Object> panel = new JsonHttpEntityBuilder().setProperty("serial", "22222")
-				.setProperty("latitude", 80.123456).setProperty("longitude", 81.654321).setProperty("brand", "tesla")
-				.setProperty("unitOfMeasure", "KW").build();
+	public void updatePanel_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
+		stub(panelService.exists(1L)).toReturn(false);
 
-		ResponseEntity<Panel> response = template.exchange("/api/panels/5000", HttpMethod.PUT, panel, Panel.class);
+		Panel panel = new Panel("100001", 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
 
-		Assert.assertEquals(404, response.getStatusCode().value());
-	}
+		MvcResult result = mockMvc.perform(put("/api/panels/" + panelId).content(JsonConverter.toJson(panel))
+				.contentType(MediaType.APPLICATION_JSON)).andReturn();
 
-	@Test
-	public void deletePanel_PanelIdGiven_PanelDeleted() {
-		String uri = "/api/panels/4";
+		MockHttpServletResponse response = result.getResponse();
 
-		ResponseEntity<?> response = template.exchange(uri, HttpMethod.DELETE, null, Object.class);
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
 
-		// The first delete operation should return a NO_CONTENT HTTP status code.
-		Assert.assertEquals(204, response.getStatusCode().value());
-
-		response = template.exchange(uri, HttpMethod.DELETE, null, Object.class);
-
-		// The second delete operation should return a NOT_FOUND HTTP status code.
-		Assert.assertEquals(404, response.getStatusCode().value());
-	}
-
-	@Test
-	public void deletePanel_PanelDoesNotExist_NotFoundErrorReturned() {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s", panelId);
-
-		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.DELETE, null,
-				PanelNotFoundError.class);
-
-		Assert.assertEquals(404, response.getStatusCode().value());
-
-		PanelNotFoundError error = response.getBody();
+		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
 				error.getMessage());
@@ -267,14 +314,53 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void getPanel_PanelIdGiven_PanelReturned() {
-		String uri = "/api/panels/1";
+	public void deletePanel_PanelIdGiven_PanelDeleted() throws Exception {
+		Panel panel = new Panel(1L, "100001", 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
 
-		ResponseEntity<PanelDto> response = template.getForEntity(uri, PanelDto.class);
+		stub(panelService.getById(1L)).toReturn(panel);
 
-		Assert.assertEquals(200, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(delete("/api/panels/1")).andReturn();
 
-		PanelDto actual = response.getBody();
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.NO_CONTENT.value(), response.getStatus());
+
+		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
+		verify(panelService).delete(argumentCaptor.capture());
+	}
+
+	@Test
+	public void deletePanel_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
+		stub(panelService.exists(panelId)).toReturn(false);
+
+		MvcResult result = mockMvc.perform(delete("/api/panels/" + panelId)).andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+
+		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
+		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
+		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
+				error.getMessage());
+		Assert.assertEquals(panelId, error.getId());
+	}
+
+	@Test
+	public void getPanel_PanelIdGiven_PanelReturned() throws Exception {
+		Panel panel = new Panel(1L, "100001", 70.650001, 72.512351, "canadiansolar", UnitOfMeasure.W);
+		String uri = "/api/panels/" + panel.getId();
+
+		stub(panelService.getById(panel.getId())).toReturn(panel);
+
+		MvcResult result = mockMvc.perform(get(uri)).andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.OK.value(), response.getStatus());
+
+		PanelDto actual = JsonConverter.fromJson(PanelDto.class, response.getContentAsString());
 		Assert.assertNotNull(actual);
 		Assert.assertTrue(actual.getUri().toString().endsWith(uri));
 		Assert.assertEquals("100001", actual.getSerial());
@@ -285,180 +371,103 @@ public class PanelControllerTests {
 		Assert.assertTrue(actual.getDailyUri().toString().endsWith(uri + "/daily"));
 		Assert.assertTrue(actual.getHourlyCountUri().toString().endsWith(uri + "/hourly/count"));
 		Assert.assertEquals(UnitOfMeasure.W.toString(), actual.getUnitOfMeasure());
+
+		ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
+		verify(panelService).getById(argumentCaptor.capture());
 	}
 
 	@Test
-	public void getPanel_PanelDoesNotExist_NotFoundErrorReturned() {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s", panelId);
+	public void getPanel_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
 
-		ResponseEntity<PanelNotFoundError> response = template.getForEntity(uri, PanelNotFoundError.class);
+		MvcResult result = mockMvc.perform(get("/api/panels/" + panelId)).andReturn();
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
 
-		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+
+		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
 				error.getMessage());
 		Assert.assertEquals(panelId, error.getId());
+
+		ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
+		verify(panelService).getById(argumentCaptor.capture());
 	}
 
 	@Test
-	public void getPanels_PanelsExist_PanelsReturned() throws Exception {
-		ResponseEntity<List<PanelDto>> response = template.exchange("/api/panels", HttpMethod.GET, null,
-				new ParameterizedTypeReference<List<PanelDto>>() {
-				});
+	public void getPanelsCount_PanelsExist_PanelsCountReturned() throws Exception {
+		Long expected = 5L;
 
-		Assert.assertEquals(200, response.getStatusCode().value());
+		stub(panelService.count()).toReturn(expected);
 
-		List<PanelDto> panelDtos = response.getBody();
-		Assert.assertNotNull(panelDtos);
-		Assert.assertEquals(5, panelDtos.size());
+		MvcResult result = mockMvc.perform(get("/api/panels/count")).andReturn();
 
-		PanelDto panelDto1 = panelDtos.get(0);
-		Assert.assertEquals("100001", panelDto1.getSerial());
-		Assert.assertEquals(Double.valueOf(70.650001), panelDto1.getLatitude());
-		Assert.assertEquals(Double.valueOf(72.512351), panelDto1.getLongitude());
-		Assert.assertEquals("canadiansolar", panelDto1.getBrand());
-		Assert.assertTrue(panelDto1.getUri().toString().endsWith("/api/panels/1"));
-		Assert.assertTrue(panelDto1.getHourlyUri().toString().endsWith("/api/panels/1/hourly"));
-		Assert.assertTrue(panelDto1.getDailyUri().toString().endsWith("/api/panels/1/daily"));
-		Assert.assertTrue(panelDto1.getHourlyCountUri().toString().endsWith("/api/panels/1/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.W.toString(), panelDto1.getUnitOfMeasure());
+		MockHttpServletResponse response = result.getResponse();
 
-		PanelDto panelDto2 = panelDtos.get(1);
-		Assert.assertEquals("100002", panelDto2.getSerial());
-		Assert.assertEquals(Double.valueOf(60.753268), panelDto2.getLatitude());
-		Assert.assertEquals(Double.valueOf(62.412378), panelDto2.getLongitude());
-		Assert.assertEquals("sunpower", panelDto2.getBrand());
-		Assert.assertTrue(panelDto2.getUri().toString().endsWith("/api/panels/2"));
-		Assert.assertTrue(panelDto2.getHourlyUri().toString().endsWith("/api/panels/2/hourly"));
-		Assert.assertTrue(panelDto2.getDailyUri().toString().endsWith("/api/panels/2/daily"));
-		Assert.assertTrue(panelDto2.getHourlyCountUri().toString().endsWith("/api/panels/2/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto2.getUnitOfMeasure());
+		Assert.assertEquals(HttpStatus.OK.value(), response.getStatus());
 
-		PanelDto panelDto3 = panelDtos.get(2);
-		Assert.assertEquals("100003", panelDto3.getSerial());
-		Assert.assertEquals(Double.valueOf(85.112412), panelDto3.getLatitude());
-		Assert.assertEquals(Double.valueOf(84.415987), panelDto3.getLongitude());
-		Assert.assertEquals("jasolar", panelDto3.getBrand());
-		Assert.assertTrue(panelDto3.getUri().toString().endsWith("/api/panels/3"));
-		Assert.assertTrue(panelDto3.getHourlyUri().toString().endsWith("/api/panels/3/hourly"));
-		Assert.assertTrue(panelDto3.getDailyUri().toString().endsWith("/api/panels/3/daily"));
-		Assert.assertTrue(panelDto3.getHourlyCountUri().toString().endsWith("/api/panels/3/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto3.getUnitOfMeasure());
+		Long actual = JsonConverter.fromJson(Long.class, response.getContentAsString());
 
-		PanelDto panelDto4 = panelDtos.get(3);
-		Assert.assertEquals("100004", panelDto4.getSerial());
-		Assert.assertEquals(Double.valueOf(50.976518), panelDto4.getLatitude());
-		Assert.assertEquals(Double.valueOf(51.014987), panelDto4.getLongitude());
-		Assert.assertEquals("qcells", panelDto4.getBrand());
-		Assert.assertTrue(panelDto4.getUri().toString().endsWith("/api/panels/4"));
-		Assert.assertTrue(panelDto4.getHourlyUri().toString().endsWith("/api/panels/4/hourly"));
-		Assert.assertTrue(panelDto4.getDailyUri().toString().endsWith("/api/panels/4/daily"));
-		Assert.assertTrue(panelDto4.getHourlyCountUri().toString().endsWith("/api/panels/4/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.W.toString(), panelDto4.getUnitOfMeasure());
+		Assert.assertEquals(expected, actual);
 
-		PanelDto panelDto5 = panelDtos.get(4);
-		Assert.assertEquals("100005", panelDto5.getSerial());
-		Assert.assertEquals(Double.valueOf(75.45127), panelDto5.getLatitude());
-		Assert.assertEquals(Double.valueOf(74.359468), panelDto5.getLongitude());
-		Assert.assertEquals("rec", panelDto5.getBrand());
-		Assert.assertTrue(panelDto5.getUri().toString().endsWith("/api/panels/5"));
-		Assert.assertTrue(panelDto5.getHourlyUri().toString().endsWith("/api/panels/5/hourly"));
-		Assert.assertTrue(panelDto5.getDailyUri().toString().endsWith("/api/panels/5/daily"));
-		Assert.assertTrue(panelDto5.getHourlyCountUri().toString().endsWith("/api/panels/5/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto5.getUnitOfMeasure());
+		verify(panelService).count();
 	}
 
 	@Test
-	public void getPanels_PageNumberAndSizeGiven_PanelsReturned() throws Exception {
-		ResponseEntity<List<PanelDto>> response = template.exchange("/api/panels?page=0&size=3", HttpMethod.GET, null,
-				new ParameterizedTypeReference<List<PanelDto>>() {
-				});
+	public void createHourlyElectricity_AllFieldsAreValid_HourlyElectricityCreated() throws Exception {
+		Long panelId = 1L;
 
-		Assert.assertEquals(200, response.getStatusCode().value());
-
-		List<PanelDto> panelDtos = response.getBody();
-		Assert.assertNotNull(panelDtos);
-		Assert.assertEquals(3, panelDtos.size());
-
-		PanelDto panelDto1 = panelDtos.get(0);
-		Assert.assertEquals("100001", panelDto1.getSerial());
-		Assert.assertEquals(Double.valueOf(70.650001), panelDto1.getLatitude());
-		Assert.assertEquals(Double.valueOf(72.512351), panelDto1.getLongitude());
-		Assert.assertEquals("canadiansolar", panelDto1.getBrand());
-		Assert.assertTrue(panelDto1.getUri().toString().endsWith("/api/panels/1"));
-		Assert.assertTrue(panelDto1.getHourlyUri().toString().endsWith("/api/panels/1/hourly"));
-		Assert.assertTrue(panelDto1.getDailyUri().toString().endsWith("/api/panels/1/daily"));
-		Assert.assertTrue(panelDto1.getHourlyCountUri().toString().endsWith("/api/panels/1/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.W.toString(), panelDto1.getUnitOfMeasure());
-
-		PanelDto panelDto2 = panelDtos.get(1);
-		Assert.assertEquals("100002", panelDto2.getSerial());
-		Assert.assertEquals(Double.valueOf(60.753268), panelDto2.getLatitude());
-		Assert.assertEquals(Double.valueOf(62.412378), panelDto2.getLongitude());
-		Assert.assertEquals("sunpower", panelDto2.getBrand());
-		Assert.assertTrue(panelDto2.getUri().toString().endsWith("/api/panels/2"));
-		Assert.assertTrue(panelDto2.getHourlyUri().toString().endsWith("/api/panels/2/hourly"));
-		Assert.assertTrue(panelDto2.getDailyUri().toString().endsWith("/api/panels/2/daily"));
-		Assert.assertTrue(panelDto2.getHourlyCountUri().toString().endsWith("/api/panels/2/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto2.getUnitOfMeasure());
-
-		PanelDto panelDto3 = panelDtos.get(2);
-		Assert.assertEquals("100003", panelDto3.getSerial());
-		Assert.assertEquals(Double.valueOf(85.112412), panelDto3.getLatitude());
-		Assert.assertEquals(Double.valueOf(84.415987), panelDto3.getLongitude());
-		Assert.assertEquals("jasolar", panelDto3.getBrand());
-		Assert.assertTrue(panelDto3.getUri().toString().endsWith("/api/panels/3"));
-		Assert.assertTrue(panelDto3.getHourlyUri().toString().endsWith("/api/panels/3/hourly"));
-		Assert.assertTrue(panelDto3.getDailyUri().toString().endsWith("/api/panels/3/daily"));
-		Assert.assertTrue(panelDto3.getHourlyCountUri().toString().endsWith("/api/panels/3/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.KW.toString(), panelDto3.getUnitOfMeasure());
-	}
-
-	@Test
-	public void getPanelsCount_PanelsExist_PanelsCountReturned() {
-		ResponseEntity<Long> response = template.getForEntity("/api/panels/count", Long.class);
-
-		Assert.assertEquals(200, response.getStatusCode().value());
-
-		Long actual = response.getBody();
-
-		Assert.assertEquals(Long.valueOf(5), actual);
-	}
-
-	@Test
-	public void createHourlyElectricity_AllFieldsAreValid_HourlyElectricityCreated() {
-		LocalDateTime now = LocalDateTime.now();
-
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
-				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
-
-		ResponseEntity<?> response = template.postForEntity("/api/panels/2/hourly", hourlyElectricity, Object.class);
-
-		Assert.assertEquals(201, response.getStatusCode().value());
-
-		URI location = response.getHeaders().getLocation();
-
-		Assert.assertNotNull(location);
-		Assert.assertTrue(RegexUtil.endsWithDigit("/api/panels/2/hourly/", location.toString()));
-	}
-
-	@Test
-	public void createHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() {
-		Long panelId = 5000L;
 		String uri = String.format("/api/panels/%s/hourly", panelId);
 
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
+		LocalDateTime now = LocalDateTime.now();
+
+		HourlyElectricity hourlyElectricity = new HourlyElectricity();
+		hourlyElectricity.setId(1L);
+		hourlyElectricity.setGeneratedElectricity(500L);
+		hourlyElectricity.setReadingAt(now);
+		stub(hourlyElectricityService.create(any())).toReturn(hourlyElectricity);
+
+		stub(panelService.getById(panelId)).toReturn(new Panel());
+
+		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500)
+				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		MvcResult result = mockMvc.perform(post(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.CREATED.value(), response.getStatus());
+
+		String location = response.getHeader("Location");
+		Assert.assertNotNull(location);
+		Assert.assertTrue(RegexUtil.endsWithDigit(uri + "/", location));
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).create(argumentCaptor.capture());
+	}
+
+	@Test
+	public void createHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
+
+		String uri = String.format("/api/panels/%s/hourly", panelId);
+
+		stub(panelService.getById(panelId)).toReturn(null);
+
+		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500)
 				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
 
-		ResponseEntity<PanelNotFoundError> response = template.postForEntity(uri, hourlyElectricity,
-				PanelNotFoundError.class);
+		MvcResult result = mockMvc.perform(post(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
 
-		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+
+		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
 				error.getMessage());
@@ -466,64 +475,119 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void createHourlyElectricity_ReadingAtIsNotSpecified_UnprocessableEntityErrorReturned() {
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
-				.build();
+	public void createHourlyElectricity_ReadingAtIsNotSpecified_UnprocessableEntityErrorReturned() throws Exception {
+		Long panelId = 1L;
 
-		ResponseEntity<HourlyElectricityReadingDateRequiredError> response = template.postForEntity(
-				"/api/panels/3/hourly", hourlyElectricity, HourlyElectricityReadingDateRequiredError.class);
+		String uri = String.format("/api/panels/%s/hourly", panelId);
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		stub(hourlyElectricityService.create(any())).toThrow(new HourlyElectricityReadingDateRequiredException());
+		stub(panelService.getById(panelId)).toReturn(new Panel());
 
-		HourlyElectricityReadingDateRequiredError error = response.getBody();
+		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500).build();
+
+		MvcResult result = mockMvc.perform(post(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		HourlyElectricityReadingDateRequiredError error = JsonConverter
+				.fromJson(HourlyElectricityReadingDateRequiredError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_DATE_REQUIRED.value(), error.getCode());
 		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.date.required"),
 				error.getMessage());
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).create(argumentCaptor.capture());
 	}
 
 	@Test
-	public void createHourlyElectricity_GeneratedElectricityIsNotSpecified_UnprocessableEntityErrorReturned() {
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder()
+	public void createHourlyElectricity_GeneratedElectricityIsNotSpecified_UnprocessableEntityErrorReturned()
+			throws Exception {
+		Long panelId = 1L;
+
+		String uri = String.format("/api/panels/%s/hourly", panelId);
+
+		stub(hourlyElectricityService.create(any())).toThrow(new HourlyElectricityReadingRequiredException());
+		stub(panelService.getById(panelId)).toReturn(new Panel());
+
+		String requestBody = new JsonBuilder()
 				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
 
-		ResponseEntity<HourlyElectricityReadingRequiredError> response = template.postForEntity("/api/panels/4/hourly",
-				hourlyElectricity, HourlyElectricityReadingRequiredError.class);
+		MvcResult result = mockMvc.perform(post(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
 
-		HourlyElectricityReadingRequiredError error = response.getBody();
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		HourlyElectricityReadingRequiredError error = JsonConverter
+				.fromJson(HourlyElectricityReadingRequiredError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_REQUIRED.value(), error.getCode());
 		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.required"),
 				error.getMessage());
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).create(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updateHourlyElectricity_AllFieldsAreValid_HourlyElectricityUpdated() {
+	public void updateHourlyElectricity_AllFieldsAreValid_HourlyElectricityUpdated() throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
+
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
+
 		LocalDateTime now = LocalDateTime.now();
 
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "2000")
+		HourlyElectricity hourlyElectricity = new HourlyElectricity();
+		hourlyElectricity.setId(1L);
+		hourlyElectricity.setGeneratedElectricity(500L);
+		hourlyElectricity.setReadingAt(now);
+		stub(hourlyElectricityService.update(any())).toReturn(hourlyElectricity);
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
+
+		stub(panelService.getById(panelId)).toReturn(new Panel());
+
+		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500)
 				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
 
-		ResponseEntity<?> response = template.exchange("/api/panels/1/hourly/1", HttpMethod.PUT, hourlyElectricity,
-				PanelNotFoundError.class);
+		MvcResult result = mockMvc.perform(put(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		Assert.assertEquals(204, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.NO_CONTENT.value(), response.getStatus());
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).update(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updateHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s/hourly/1", panelId);
+	public void updateHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
 
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
-				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.PUT, hourlyElectricity,
-				PanelNotFoundError.class);
+		LocalDateTime now = LocalDateTime.now();
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		PanelNotFoundError error = response.getBody();
+		stub(panelService.getById(panelId)).toReturn(null);
+
+		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500)
+				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
+
+		MvcResult result = mockMvc.perform(put(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+
+		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
 				error.getMessage());
@@ -531,52 +595,91 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void updateHourlyElectricity_ReadingAtIsNotSpecified_UnprocessableEntityErrorReturned() {
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
-				.build();
+	public void updateHourlyElectricity_ReadingAtIsNotSpecified_UnprocessableEntityErrorReturned() throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
 
-		ResponseEntity<HourlyElectricityReadingDateRequiredError> response = template.exchange("/api/panels/1/hourly/1",
-				HttpMethod.PUT, hourlyElectricity, HourlyElectricityReadingDateRequiredError.class);
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		stub(hourlyElectricityService.update(any())).toThrow(new HourlyElectricityReadingDateRequiredException());
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		HourlyElectricityReadingDateRequiredError error = response.getBody();
+		stub(panelService.getById(panelId)).toReturn(new Panel());
+
+		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500).build();
+
+		MvcResult result = mockMvc.perform(put(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		HourlyElectricityReadingDateRequiredError error = JsonConverter
+				.fromJson(HourlyElectricityReadingDateRequiredError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_DATE_REQUIRED.value(), error.getCode());
 		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.date.required"),
 				error.getMessage());
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).update(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updateHourlyElectricity_GeneratedElectricityIsNotSpecified_UnprocessableEntityErrorReturned() {
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder()
+	public void updateHourlyElectricity_GeneratedElectricityIsNotSpecified_UnprocessableEntityErrorReturned()
+			throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
+
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
+
+		stub(hourlyElectricityService.update(any())).toThrow(new HourlyElectricityReadingRequiredException());
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
+
+		stub(panelService.getById(panelId)).toReturn(new Panel());
+
+		String requestBody = new JsonBuilder()
 				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
 
-		ResponseEntity<HourlyElectricityReadingRequiredError> response = template.exchange("/api/panels/1/hourly/1",
-				HttpMethod.PUT, hourlyElectricity, HourlyElectricityReadingRequiredError.class);
+		MvcResult result = mockMvc.perform(put(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
 
-		HourlyElectricityReadingRequiredError error = response.getBody();
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		HourlyElectricityReadingRequiredError error = JsonConverter
+				.fromJson(HourlyElectricityReadingRequiredError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_READING_REQUIRED.value(), error.getCode());
 		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.reading.required"),
 				error.getMessage());
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).update(argumentCaptor.capture());
 	}
 
 	@Test
-	public void updateHourlyElectricity_HourlyElectriciyDoesnotExist_NotFoundErrorReturned() {
-		Long hourlyElectricityId = 5000L;
-		String uri = String.format("/api/panels/1/hourly/%s", hourlyElectricityId);
-		LocalDateTime now = LocalDateTime.now();
+	public void updateHourlyElectricity_HourlyElectriciyDoesnotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
 
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "2500")
-				.setProperty("readingAt", now.format(DateTimeFormatter.ISO_DATE_TIME)).build();
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		ResponseEntity<HourlyElectricityNotFoundError> response = template.exchange(uri, HttpMethod.PUT,
-				hourlyElectricity, HourlyElectricityNotFoundError.class);
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(false);
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		stub(panelService.getById(panelId)).toReturn(new Panel());
 
-		HourlyElectricityNotFoundError error = response.getBody();
+		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500).build();
+
+		MvcResult result = mockMvc.perform(put(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+
+		HourlyElectricityNotFoundError error = JsonConverter.fromJson(HourlyElectricityNotFoundError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("hourly.electricity.id.not.found"),
 				hourlyElectricityId), error.getMessage());
@@ -584,53 +687,89 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void updateHourlyElectricity_HourlyElectricityNotGeneratedByPanel_UnprocessableEntityErrorReturned() {
-		Long panelId = 2L;
+	public void updateHourlyElectricity_HourlyElectricityNotGeneratedByPanel_UnprocessableEntityErrorReturned()
+			throws Exception {
+		Long panelId = 1L;
 		Long hourlyElectricityId = 1L;
+
 		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
+		stub(hourlyElectricityService.update(any()))
+				.toThrow(new HourlyElectricityPanelMismatchException(hourlyElectricityId, panelId));
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
+
+		stub(panelService.getById(panelId)).toReturn(new Panel());
+
+		String requestBody = new JsonBuilder().setProperty("generatedElectricity", 500)
 				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
 
-		ResponseEntity<HourlyElectricityReadingRequiredError> response = template.exchange(uri, HttpMethod.PUT,
-				hourlyElectricity, HourlyElectricityReadingRequiredError.class);
+		MvcResult result = mockMvc.perform(put(uri).content(requestBody).contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
 
-		Assert.assertEquals(422, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
 
-		HourlyElectricityReadingRequiredError error = response.getBody();
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		HourlyElectricityPanelMismatchError error = JsonConverter.fromJson(HourlyElectricityPanelMismatchError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_PANEL_MISMATCH.value(), error.getCode());
 		Assert.assertEquals(
 				String.format(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.panel.mismatch"),
 						hourlyElectricityId, panelId),
 				error.getMessage());
+		Assert.assertEquals(panelId, Long.valueOf(error.getPanelId()));
+		Assert.assertEquals(hourlyElectricityId, Long.valueOf(error.getHourlyElectricityId()));
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).update(argumentCaptor.capture());
 	}
 
 	@Test
-	public void deleteHourlyElectricity_PanelIdAndHourlyElectricityIdGiven_HourlyElectricityDeleted() {
-		String uri = "/api/panels/1/hourly/1";
+	public void deleteHourlyElectricity_PanelIdAndHourlyElectricityIdGiven_HourlyElectricityDeleted() throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
 
-		ResponseEntity<?> response = template.exchange(uri, HttpMethod.DELETE, null, Object.class);
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		// The first delete operation should return a NO_CONTENT HTTP status code.
-		Assert.assertEquals(204, response.getStatusCode().value());
+		HourlyElectricity hourlyElectricity = new HourlyElectricity();
+		hourlyElectricity.setId(1L);
+		hourlyElectricity.setGeneratedElectricity(500L);
+		hourlyElectricity.setReadingAt(LocalDateTime.now());
+		stub(hourlyElectricityService.getById(hourlyElectricityId)).toReturn(hourlyElectricity);
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		response = template.exchange(uri, HttpMethod.DELETE, null, Object.class);
+		stub(panelService.getById(panelId)).toReturn(new Panel());
+		stub(panelService.exists(panelId)).toReturn(true);
 
-		// The second delete operation should return a NOT_FOUND HTTP status code.
-		Assert.assertEquals(404, response.getStatusCode().value());
+		MvcResult result = mockMvc.perform(delete(uri)).andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.NO_CONTENT.value(), response.getStatus());
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).delete(argumentCaptor.capture());
 	}
 
 	@Test
-	public void deleteHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s/hourly/1", panelId);
+	public void deleteHourlyElectricity_PanelDoesnotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
 
-		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.DELETE, null,
-				PanelNotFoundError.class);
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		stub(hourlyElectricityService.getById(any())).toReturn(new HourlyElectricity());
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		PanelNotFoundError error = response.getBody();
+		stub(panelService.exists(panelId)).toReturn(false);
+
+		MvcResult result = mockMvc.perform(delete(uri)).andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+
+		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
 				error.getMessage());
@@ -638,16 +777,22 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void deleteHourlyElectricity_HourlyElectricityDoesnotExist_NotFoundErrorReturned() {
-		Long hourlyElectricityId = 5000L;
-		String uri = String.format("/api/panels/1/hourly/%s", hourlyElectricityId);
+	public void deleteHourlyElectricity_HourlyElectricityDoesnotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.DELETE, null,
-				PanelNotFoundError.class);
+		stub(hourlyElectricityService.getById(any())).toReturn(null);
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		stub(panelService.exists(panelId)).toReturn(true);
 
-		PanelNotFoundError error = response.getBody();
+		MvcResult result = mockMvc.perform(delete(uri)).andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		HourlyElectricityNotFoundError error = JsonConverter.fromJson(HourlyElectricityNotFoundError.class,
+				response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("hourly.electricity.id.not.found"),
 				hourlyElectricityId), error.getMessage());
@@ -655,94 +800,90 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void getHourlyElectricities_PanelIdGiven_HourlyElectricitiesReturned() throws Exception {
-		// We construct and make a GET request that should return 3 JSON hourly
-		// electricity objects starting from page 0.
-		ResponseEntity<List<HourlyElectricityDto>> response = template.exchange("/api/panels/1/hourly?page=0&size=3",
-				HttpMethod.GET, null, new ParameterizedTypeReference<List<HourlyElectricityDto>>() {
-				});
+	public void deleteHourlyElectricity_HourlyElectricityNotGeneratedByPanel_UnprocessableEntityErrorReturned()
+			throws Exception {
+		Long panelId = 1L;
+		Long hourlyElectricityId = 1L;
 
-		Assert.assertEquals(200, response.getStatusCode().value());
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		List<HourlyElectricityDto> hourlyElectricities = response.getBody();
-		Assert.assertNotNull(hourlyElectricities);
-		Assert.assertEquals(3, hourlyElectricities.size());
+		HourlyElectricity hourlyElectricity = new HourlyElectricity();
+		hourlyElectricity.setId(1L);
+		hourlyElectricity.setGeneratedElectricity(500L);
+		hourlyElectricity.setReadingAt(LocalDateTime.now());
+		stub(hourlyElectricityService.getById(hourlyElectricityId)).toReturn(hourlyElectricity);
 
-		Assert.assertTrue(
-				RegexUtil.endsWithDigit("/api/panels/1/hourly/", hourlyElectricities.get(0).getUri().toString()));
-		Assert.assertTrue(
-				RegexUtil.endsWithDigit("/api/panels/1/hourly/", hourlyElectricities.get(1).getUri().toString()));
-		Assert.assertTrue(
-				RegexUtil.endsWithDigit("/api/panels/1/hourly/", hourlyElectricities.get(2).getUri().toString()));
-	}
+		doThrow(new HourlyElectricityPanelMismatchException(hourlyElectricityId, panelId))
+				.when(hourlyElectricityService).delete(any());
 
-	@Test
-	public void getHourlyElectricities_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
-		Long panelId = 5000L;
-		String uri = String.format("/api/panels/%s/hourly?page=0&size=3", panelId);
+		stub(panelService.exists(panelId)).toReturn(true);
 
-		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.GET, null,
-				PanelNotFoundError.class);
+		MvcResult result = mockMvc.perform(delete(uri)).andReturn();
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
 
-		PanelNotFoundError error = response.getBody();
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
+
+		HourlyElectricityPanelMismatchError error = JsonConverter.fromJson(HourlyElectricityPanelMismatchError.class,
+				response.getContentAsString());
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_PANEL_MISMATCH.value(), error.getCode());
+		Assert.assertEquals(
+				String.format(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.panel.mismatch"),
+						hourlyElectricityId, panelId),
 				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
+		Assert.assertEquals(panelId, Long.valueOf(error.getPanelId()));
+		Assert.assertEquals(hourlyElectricityId, Long.valueOf(error.getHourlyElectricityId()));
+
+		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
+		verify(hourlyElectricityService).delete(argumentCaptor.capture());
 	}
+
 
 	@Test
 	public void getAllDailyElectricityFromYesterday_PanelIdGiven_DailyElectricitiesReturned() throws Exception {
-		ResponseEntity<List<DailyElectricity>> response = template.exchange("/api/panels/2/daily", HttpMethod.GET, null,
-				new ParameterizedTypeReference<List<DailyElectricity>>() {
-				});
+		Long panelId = 1L;
 
-		Assert.assertEquals(200, response.getStatusCode().value());
-
-		List<DailyElectricity> dailyElectricities = response.getBody();
-		Assert.assertNotNull(dailyElectricities);
-		Assert.assertEquals(3, dailyElectricities.size());
+		String uri = String.format("/api/panels/%s/daily", panelId);
 
 		LocalDate today = LocalDate.now();
+		LocalDate oneDayAgo = today.minusDays(1);
+		LocalDate twoDaysAgo = today.minusDays(2);
+		LocalDate threeDaysAgo = today.minusDays(3);
 
-		DailyElectricity dailyElectricity1 = dailyElectricities.get(0);
+		List<DailyElectricity> dailyElectrities = Arrays.asList(
+				new DailyElectricity(oneDayAgo.getYear(), oneDayAgo.getMonthValue(), oneDayAgo.getDayOfMonth(), 3575L,
+						893.75, 800L, 950L),
+				new DailyElectricity(twoDaysAgo.getYear(), twoDaysAgo.getMonthValue(), twoDaysAgo.getDayOfMonth(),
+						3025L, 756.25, 700L, 850L),
+				new DailyElectricity(threeDaysAgo.getYear(), threeDaysAgo.getMonthValue(), threeDaysAgo.getDayOfMonth(),
+						4700L, 1175D, 975L, 1500L));
 
-		Assert.assertEquals(today.minusDays(1), dailyElectricity1.getDate());
-		Assert.assertEquals(Long.valueOf(4700), dailyElectricity1.getSum());
-		Assert.assertEquals(Double.valueOf(1175), dailyElectricity1.getAverage());
-		Assert.assertEquals(Long.valueOf(975), dailyElectricity1.getMin());
-		Assert.assertEquals(Long.valueOf(1500), dailyElectricity1.getMax());
+		stub(hourlyElectricityService.getDailyElectricitiesBeforeDate(anyLong(), any())).toReturn(dailyElectrities);
 
-		DailyElectricity dailyElectricity2 = dailyElectricities.get(1);
+		stub(panelService.exists(panelId)).toReturn(true);
 
-		Assert.assertEquals(today.minusDays(2), dailyElectricity2.getDate());
-		Assert.assertEquals(Long.valueOf(3025), dailyElectricity2.getSum());
-		Assert.assertEquals(Double.valueOf(756.25), dailyElectricity2.getAverage());
-		Assert.assertEquals(Long.valueOf(700), dailyElectricity2.getMin());
-		Assert.assertEquals(Long.valueOf(850), dailyElectricity2.getMax());
+		mockMvc.perform(get(uri)).andExpect(jsonPath("$", hasSize(3)));
 
-		DailyElectricity dailyElectricity3 = dailyElectricities.get(2);
+		ArgumentCaptor<Long> argumentCaptor1 = ArgumentCaptor.forClass(Long.class);
+		ArgumentCaptor<LocalDateTime> argumentCaptor2 = ArgumentCaptor.forClass(LocalDateTime.class);
 
-		Assert.assertEquals(today.minusDays(3), dailyElectricity3.getDate());
-		Assert.assertEquals(Long.valueOf(3575), dailyElectricity3.getSum());
-		Assert.assertEquals(Double.valueOf(893.75), dailyElectricity3.getAverage());
-		Assert.assertEquals(Long.valueOf(800), dailyElectricity3.getMin());
-		Assert.assertEquals(Long.valueOf(950), dailyElectricity3.getMax());
+		verify(hourlyElectricityService).getDailyElectricitiesBeforeDate(argumentCaptor1.capture(),
+				argumentCaptor2.capture());
 	}
 
 	@Test
 	public void getAllDailyElectricityFromYesterday_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
-		Long panelId = 5000L;
+		Long panelId = 1L;
 		String uri = String.format("/api/panels/%s/daily", panelId);
+		stub(panelService.exists(panelId)).toReturn(false);
 
-		ResponseEntity<PanelNotFoundError> response = template.exchange(uri, HttpMethod.GET, null,
-				PanelNotFoundError.class);
+		MvcResult result = mockMvc.perform(get(uri)).andReturn();
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
 
-		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+
+		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
 				error.getMessage());
@@ -750,25 +891,39 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void getHourlyElectricitiesCount_PanelExists_HourlyElectricitiesCountReturned() {
-		ResponseEntity<Long> response = template.getForEntity("/api/panels/1/hourly/count", Long.class);
+	public void getHourlyElectricitiesCount_PanelExists_HourlyElectricitiesCountReturned() throws Exception {
+		Long panelId = 1L;
+		Long expected = 10L;
+		stub(hourlyElectricityService.getHourlyElectricitiesCount(panelId)).toReturn(expected);
+		stub(panelService.exists(panelId)).toReturn(true);
 
-		Assert.assertEquals(200, response.getStatusCode().value());
+		String uri = String.format("/api/panels/%s/hourly/count", panelId);
 
-		Long actual = response.getBody();
-		Assert.assertEquals(Long.valueOf(10), actual);
+		MvcResult result = mockMvc.perform(get(uri)).andReturn();
+
+		MockHttpServletResponse response = result.getResponse();
+
+		Assert.assertEquals(HttpStatus.OK.value(), response.getStatus());
+
+		Long actual = JsonConverter.fromJson(Long.class, response.getContentAsString());
+
+		Assert.assertEquals(expected, actual);
+
+		verify(hourlyElectricityService).getHourlyElectricitiesCount(panelId);
 	}
 
 	@Test
-	public void getHourlyElectricitiesCount_PanelDoesNotExist_NotFoundErrorReturned() {
-		Long panelId = 5000L;
+	public void getHourlyElectricitiesCount_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
+		Long panelId = 1L;
 		String uri = String.format("/api/panels/%s/hourly/count", panelId);
 
-		ResponseEntity<PanelNotFoundError> response = template.getForEntity(uri, PanelNotFoundError.class);
+		MvcResult result = mockMvc.perform(get(uri)).andReturn();
 
-		Assert.assertEquals(404, response.getStatusCode().value());
+		MockHttpServletResponse response = result.getResponse();
 
-		PanelNotFoundError error = response.getBody();
+		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+
+		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
 		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
 		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
 				error.getMessage());

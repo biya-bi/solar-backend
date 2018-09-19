@@ -6,7 +6,6 @@ package org.rainbow.solar.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.rainbow.solar.model.DailyElectricity;
 import org.rainbow.solar.model.HourlyElectricity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,14 +24,10 @@ import org.springframework.data.rest.core.annotation.RestResource;
 public interface HourlyElectricityRepository extends PagingAndSortingRepository<HourlyElectricity, Long> {
 	Page<HourlyElectricity> findAllByPanelIdOrderByReadingAtDesc(Long panelId, Pageable pageable);
 
-	@Query("SELECT new org.rainbow.solar.model.DailyElectricity(YEAR(readingAt) as year, "
-			+ "MONTH(readingAt) as month, DAY(readingAt) as day, SUM(generatedElectricity) as sum, "
-			+ "AVG(generatedElectricity) as average, MIN(generatedElectricity) as min, "
-			+ "MAX(generatedElectricity) as max) FROM HourlyElectricity "
-			+ "WHERE panel.id=:panelId AND readingAt<:dateTime GROUP BY YEAR(readingAt),MONTH(readingAt),DAY(readingAt) "
-			+ "ORDER BY YEAR(readingAt) DESC,MONTH(readingAt) DESC,DAY(readingAt) DESC")
-	List<DailyElectricity> findDailyElectricitiesBeforeDate(@Param("panelId") Long panelId,
-			@Param("dateTime") LocalDateTime dateTime, Pageable pageable);
+	@Query("SELECT he FROM HourlyElectricity he WHERE he.panel.id=:panelId AND he.readingAt<:dateTime "
+			+ "ORDER BY he.readingAt DESC")
+	List<HourlyElectricity> findAllByPanelIdBeforeDate(@Param("panelId") Long panelId,
+			@Param("dateTime") LocalDateTime dateTime);
 
 	@Query("SELECT COUNT(id) FROM HourlyElectricity WHERE panel.id=:panelId")
 	long countByPanelId(@Param("panelId") Long panelId);

@@ -32,7 +32,7 @@ public class PanelDtoConverter {
 
 	public static Panel fromDto(PanelDto panelDto) {
 		return new Panel(panelDto.getSerial(), panelDto.getLatitude(), panelDto.getLongitude(), panelDto.getBrand(),
-				UnitOfMeasure.valueOf(panelDto.getUnitOfMeasure()));
+				panelDto.getUnitOfMeasure() != null ? UnitOfMeasure.valueOf(panelDto.getUnitOfMeasure()) : null);
 	}
 
 	public static PanelDto toDtoFromCurrentUri(Panel panel) {

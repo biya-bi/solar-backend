@@ -21,7 +21,7 @@ import org.springframework.data.domain.Pageable;
 public interface HourlyElectricityService extends Service<HourlyElectricity, Long> {
 	Page<HourlyElectricity> getHourlyElectricities(Long panelId, Pageable pageable);
 
-	List<DailyElectricity> getDailyElectricitiesBeforeDate(Long panelId, LocalDateTime dateTime, Pageable pageable);
+	List<DailyElectricity> getDailyElectricitiesBeforeDate(Long panelId, LocalDateTime dateTime);
 
 	long getHourlyElectricitiesCount(Long panelId);
 }

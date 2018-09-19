@@ -6,24 +6,19 @@ package org.rainbow.solar.rest.util;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-
 /**
  * @author biya-bi
  *
  */
-public class JsonHttpEntityBuilder {
+public class JsonBuilder {
 
 	private Map<String, Object> map = new HashMap<>();
 
-	public JsonHttpEntityBuilder setProperty(String key, Object value) {
+	public JsonBuilder setProperty(String key, Object value) {
 		map.put(key, value);
 		return this;
 	}
-
-	public HttpEntity<Object> build() {
+	public String build() {
 		StringBuilder b = new StringBuilder();
 		b.append("{");
 		int i = 0;
@@ -40,13 +35,6 @@ public class JsonHttpEntityBuilder {
 
 		}
 		b.append("}");
-		return getHttpEntity(b.toString());
+		return b.toString();
 	}
-
-	private HttpEntity<Object> getHttpEntity(Object body) {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		return new HttpEntity<Object>(body, headers);
-	}
-
 }
