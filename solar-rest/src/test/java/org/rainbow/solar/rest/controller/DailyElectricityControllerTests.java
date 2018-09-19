@@ -30,7 +30,7 @@ import org.rainbow.solar.rest.err.SolarErrorCode;
 import org.rainbow.solar.rest.handler.GlobalExceptionHandler;
 import org.rainbow.solar.rest.util.ErrorMessagesResourceBundle;
 import org.rainbow.solar.rest.util.JsonConverter;
-import org.rainbow.solar.service.HourlyElectricityService;
+import org.rainbow.solar.service.DailyElectricityService;
 import org.rainbow.solar.service.PanelService;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -56,7 +56,7 @@ public class DailyElectricityControllerTests {
 	private PanelService panelService;
 
 	@Mock
-	private HourlyElectricityService hourlyElectricityService;
+	private DailyElectricityService dailyElectricityService;
 
 	@Before
 	public void setup() throws Exception {
@@ -83,7 +83,7 @@ public class DailyElectricityControllerTests {
 				new DailyElectricity(threeDaysAgo.getYear(), threeDaysAgo.getMonthValue(), threeDaysAgo.getDayOfMonth(),
 						4700L, 1175D, 975L, 1500L));
 
-		stub(hourlyElectricityService.getDailyElectricitiesBeforeDate(anyLong(), any())).toReturn(dailyElectrities);
+		stub(dailyElectricityService.getBeforeDate(anyLong(), any())).toReturn(dailyElectrities);
 
 		stub(panelService.exists(panelId)).toReturn(true);
 
@@ -92,7 +92,7 @@ public class DailyElectricityControllerTests {
 		ArgumentCaptor<Long> argumentCaptor1 = ArgumentCaptor.forClass(Long.class);
 		ArgumentCaptor<LocalDateTime> argumentCaptor2 = ArgumentCaptor.forClass(LocalDateTime.class);
 
-		verify(hourlyElectricityService).getDailyElectricitiesBeforeDate(argumentCaptor1.capture(),
+		verify(dailyElectricityService).getBeforeDate(argumentCaptor1.capture(),
 				argumentCaptor2.capture());
 	}
 

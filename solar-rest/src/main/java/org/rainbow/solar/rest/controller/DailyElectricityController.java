@@ -11,7 +11,7 @@ import java.util.List;
 import org.rainbow.solar.RequestMappings;
 import org.rainbow.solar.model.DailyElectricity;
 import org.rainbow.solar.rest.err.PanelNotFoundError;
-import org.rainbow.solar.service.HourlyElectricityService;
+import org.rainbow.solar.service.DailyElectricityService;
 import org.rainbow.solar.service.PanelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,7 +34,7 @@ public class DailyElectricityController {
 	private PanelService panelService;
 
 	@Autowired
-	private HourlyElectricityService hourlyElectricityService;
+	private DailyElectricityService dailyElectricityService;
 
 	/**
 	 * This end point is used by Front end charts component to plot the daily
@@ -49,8 +49,8 @@ public class DailyElectricityController {
 		if (!panelService.exists(panelId)) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(panelId));
 		}
-		List<DailyElectricity> dailyElectricityForPanel = hourlyElectricityService
-				.getDailyElectricitiesBeforeDate(panelId, LocalDateTime.of(LocalDate.now(), LocalTime.MIDNIGHT));
+		List<DailyElectricity> dailyElectricityForPanel = dailyElectricityService
+				.getBeforeDate(panelId, LocalDateTime.of(LocalDate.now(), LocalTime.MIDNIGHT));
 		return ResponseEntity.ok(dailyElectricityForPanel);
 	}
 

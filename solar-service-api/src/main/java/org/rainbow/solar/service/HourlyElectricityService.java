@@ -3,10 +3,6 @@
  */
 package org.rainbow.solar.service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import org.rainbow.solar.model.DailyElectricity;
 import org.rainbow.solar.model.HourlyElectricity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,8 +16,6 @@ import org.springframework.data.domain.Pageable;
  */
 public interface HourlyElectricityService extends Service<HourlyElectricity, Long> {
 	Page<HourlyElectricity> getByPanelId(Long panelId, Pageable pageable);
-
-	List<DailyElectricity> getDailyElectricitiesBeforeDate(Long panelId, LocalDateTime dateTime);
 
 	long countByPanelId(Long panelId);
 }
