@@ -84,7 +84,7 @@ public class HibernateDataSourceAutoConfiguration extends DataSourceAutoConfigur
 
 	@Override
 	protected String[] getEntityPackages() {
-		return new String[] { "org.rainbow.solar.rest.rest.service.rest" };
+		return new String[] { "org.rainbow.solar.model" };
 	}
 
 }
