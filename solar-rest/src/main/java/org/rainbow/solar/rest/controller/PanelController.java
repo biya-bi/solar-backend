@@ -168,7 +168,7 @@ public class PanelController {
 		if (!panelService.exists(id)) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
-		Page<HourlyElectricity> page = hourlyElectricityService.getHourlyElectricities(id, pageable);
+		Page<HourlyElectricity> page = hourlyElectricityService.getByPanelId(id, pageable);
 		List<HourlyElectricityDto> hourlyElectricityDtos = new ArrayList<>();
 		page.getContent().forEach(x -> hourlyElectricityDtos.add(HourlyElectricityDtoConverter.toDto(id, x)));
 		return ResponseEntity.ok(hourlyElectricityDtos);
@@ -202,6 +202,6 @@ public class PanelController {
 		if (!panelService.exists(id)) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
-		return ResponseEntity.ok(hourlyElectricityService.getHourlyElectricitiesCount(id));
+		return ResponseEntity.ok(hourlyElectricityService.countByPanelId(id));
 	}
 }

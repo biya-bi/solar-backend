@@ -178,7 +178,7 @@ public class HourlyElectricityServiceImplTests {
 
 	@Test
 	public void getByPanelId_PanelIdGiven_HourlyElectricitiesReturned() throws Exception {
-		hourlyElectricityService.getHourlyElectricities(1L, null);
+		hourlyElectricityService.getByPanelId(1L, null);
 
 		ArgumentCaptor<Long> argumentCaptor1 = ArgumentCaptor.forClass(Long.class);
 		ArgumentCaptor<Pageable> argumentCaptor2 = ArgumentCaptor.forClass(Pageable.class);
@@ -190,7 +190,7 @@ public class HourlyElectricityServiceImplTests {
 	public void countByPanelId_PanelExists_HourlyElectricitiesCountReturned() {
 		stub(hourlyElectricityRepository.countByPanelId(1L)).toReturn(10L);
 
-		long actual = hourlyElectricityService.getHourlyElectricitiesCount(1L);
+		long actual = hourlyElectricityService.countByPanelId(1L);
 
 		ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
 		verify(hourlyElectricityRepository).countByPanelId(argumentCaptor.capture());

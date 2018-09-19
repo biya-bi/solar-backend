@@ -109,7 +109,7 @@ public class HourlyElectricityServiceImpl implements HourlyElectricityService {
 		return hourlyElectricityRepository.count();
 	}
 
-	public Page<HourlyElectricity> getHourlyElectricities(Long panelId, Pageable pageable) {
+	public Page<HourlyElectricity> getByPanelId(Long panelId, Pageable pageable) {
 		return hourlyElectricityRepository.findAllByPanelIdOrderByReadingAtDesc(panelId, pageable);
 	}
 
@@ -135,7 +135,7 @@ public class HourlyElectricityServiceImpl implements HourlyElectricityService {
 	}
 
 	@Override
-	public long getHourlyElectricitiesCount(Long panelId) {
+	public long countByPanelId(Long panelId) {
 		return hourlyElectricityRepository.countByPanelId(panelId);
 	}
 

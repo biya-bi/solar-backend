@@ -887,7 +887,7 @@ public class PanelControllerTests {
 	public void getHourlyElectricitiesCount_PanelExists_HourlyElectricitiesCountReturned() throws Exception {
 		Long panelId = 1L;
 		Long expected = 10L;
-		stub(hourlyElectricityService.getHourlyElectricitiesCount(panelId)).toReturn(expected);
+		stub(hourlyElectricityService.countByPanelId(panelId)).toReturn(expected);
 		stub(panelService.exists(panelId)).toReturn(true);
 
 		String uri = String.format("/api/panels/%s/hourly/count", panelId);
@@ -902,7 +902,7 @@ public class PanelControllerTests {
 
 		Assert.assertEquals(expected, actual);
 
-		verify(hourlyElectricityService).getHourlyElectricitiesCount(panelId);
+		verify(hourlyElectricityService).countByPanelId(panelId);
 	}
 
 	@Test
