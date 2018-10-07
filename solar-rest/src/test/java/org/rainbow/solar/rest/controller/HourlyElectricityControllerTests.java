@@ -35,7 +35,6 @@ import org.rainbow.solar.rest.handler.GlobalExceptionHandler;
 import org.rainbow.solar.rest.util.ErrorMessagesResourceBundle;
 import org.rainbow.solar.rest.util.JsonBuilder;
 import org.rainbow.solar.rest.util.JsonConverter;
-import org.rainbow.solar.rest.util.RegexUtil;
 import org.rainbow.solar.service.HourlyElectricityService;
 import org.rainbow.solar.service.PanelService;
 import org.rainbow.solar.service.exc.HourlyElectricityPanelMismatchException;
@@ -99,10 +98,6 @@ public class HourlyElectricityControllerTests {
 		MockHttpServletResponse response = result.getResponse();
 
 		Assert.assertEquals(HttpStatus.CREATED.value(), response.getStatus());
-
-		String location = response.getHeader("Location");
-		Assert.assertNotNull(location);
-		Assert.assertTrue(RegexUtil.endsWithDigit(uri + "/", location));
 
 		ArgumentCaptor<HourlyElectricity> argumentCaptor = ArgumentCaptor.forClass(HourlyElectricity.class);
 		verify(hourlyElectricityService).create(argumentCaptor.capture());

@@ -30,7 +30,6 @@ import org.rainbow.solar.rest.err.SolarErrorCode;
 import org.rainbow.solar.rest.handler.GlobalExceptionHandler;
 import org.rainbow.solar.rest.util.ErrorMessagesResourceBundle;
 import org.rainbow.solar.rest.util.JsonConverter;
-import org.rainbow.solar.rest.util.RegexUtil;
 import org.rainbow.solar.service.PanelService;
 import org.rainbow.solar.service.exc.PanelSerialDuplicateException;
 import org.rainbow.solar.service.exc.PanelSerialMaxLengthExceededException;
@@ -79,10 +78,6 @@ public class PanelControllerTests {
 		MockHttpServletResponse response = result.getResponse();
 
 		Assert.assertEquals(HttpStatus.CREATED.value(), response.getStatus());
-
-		String location = response.getHeader("Location");
-		Assert.assertNotNull(location);
-		Assert.assertTrue(RegexUtil.endsWithDigit("/api/panels/", location));
 
 		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
 		verify(panelService).create(argumentCaptor.capture());
@@ -338,15 +333,6 @@ public class PanelControllerTests {
 
 		PanelDto actual = JsonConverter.fromJson(PanelDto.class, response.getContentAsString());
 		Assert.assertNotNull(actual);
-		Assert.assertTrue(actual.getUri().toString().endsWith(uri));
-		Assert.assertEquals("100001", actual.getSerial());
-		Assert.assertEquals(Double.valueOf(70.650001), actual.getLatitude());
-		Assert.assertEquals(Double.valueOf(72.512351), actual.getLongitude());
-		Assert.assertEquals("canadiansolar", actual.getBrand());
-		Assert.assertTrue(actual.getHourlyUri().toString().endsWith(uri + "/hourly"));
-		Assert.assertTrue(actual.getDailyUri().toString().endsWith(uri + "/daily"));
-		Assert.assertTrue(actual.getHourlyCountUri().toString().endsWith(uri + "/hourly/count"));
-		Assert.assertEquals(UnitOfMeasure.W.toString(), actual.getUnitOfMeasure());
 
 		ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
 		verify(panelService).getById(argumentCaptor.capture());
