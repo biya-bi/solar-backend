@@ -27,7 +27,7 @@ public class PanelDtoConverterTests {
 	/**
 	 * 
 	 */
-	private static final String PANEL_ENDPOINT = "/api/panels/";
+	private static final String PANEL_ENDPOINT = "/api/panels";
 
 	@Before
 	public void setup() throws Exception {
@@ -48,7 +48,7 @@ public class PanelDtoConverterTests {
 		Assert.assertEquals(panel.getBrand(), panelDto.getBrand());
 		Assert.assertEquals(panel.getUnitOfMeasure().toString(), panelDto.getUnitOfMeasure());
 
-		String expectedPanelUri = String.format("/api/panels/%s", panel.getId());
+		String expectedPanelUri = String.format("%s/%s", PANEL_ENDPOINT, panel.getId());
 
 		Assert.assertTrue(panelDto.getUri().toString().endsWith(expectedPanelUri));
 		Assert.assertTrue(panelDto.getHourlyUri().toString().endsWith(expectedPanelUri + "/hourly"));
