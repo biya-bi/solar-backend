@@ -11,7 +11,7 @@ import org.rainbow.solar.model.Panel;
 import org.rainbow.solar.rest.converter.PanelDtoConverter;
 import org.rainbow.solar.rest.dto.PanelDto;
 import org.rainbow.solar.rest.err.PanelNotFoundError;
-import org.rainbow.solar.rest.util.UriUtil;
+import org.rainbow.solar.rest.util.PanelHateoasUtil;
 import org.rainbow.solar.service.PanelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -51,7 +51,7 @@ public class PanelController {
 
 		Panel createdPanel = panelService.create(panel);
 
-		return ResponseEntity.created(UriUtil.buildUri(createdPanel.getId())).build();
+		return ResponseEntity.created(new PanelHateoasUtil(createdPanel.getId()).buildUri()).build();
 	}
 
 	@PutMapping("/{id}")

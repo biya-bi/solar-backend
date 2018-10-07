@@ -47,13 +47,6 @@ public class PanelDtoConverterTests {
 		Assert.assertEquals(panel.getLongitude(), panelDto.getLongitude());
 		Assert.assertEquals(panel.getBrand(), panelDto.getBrand());
 		Assert.assertEquals(panel.getUnitOfMeasure().toString(), panelDto.getUnitOfMeasure());
-
-		String expectedPanelUri = String.format("%s/%s", PANEL_ENDPOINT, panel.getId());
-
-		Assert.assertTrue(panelDto.getUri().toString().endsWith(expectedPanelUri));
-		Assert.assertTrue(panelDto.getHourlyUri().toString().endsWith(expectedPanelUri + "/hourly"));
-		Assert.assertTrue(panelDto.getDailyUri().toString().endsWith(expectedPanelUri + "/daily"));
-		Assert.assertTrue(panelDto.getHourlyCountUri().toString().endsWith(expectedPanelUri + "/hourly/count"));
 	}
 
 	@Test

@@ -49,11 +49,6 @@ public class HourlyElectricityDtoConverterTests {
 		Assert.assertEquals(hourlyElectricity.getGeneratedElectricity(),
 				hourlyElectricityDto.getGeneratedElectricity());
 		Assert.assertEquals(hourlyElectricity.getReadingAt(), hourlyElectricityDto.getReadingAt());
-
-		String expectedHourlyElectricityUri = String.format("%s/%s/hourly/%s", PANEL_ENDPOINT,
-				hourlyElectricity.getPanel().getId(), hourlyElectricity.getId());
-
-		Assert.assertTrue(hourlyElectricityDto.getUri().toString().endsWith(expectedHourlyElectricityUri));
 	}
 
 	@Test

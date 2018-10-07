@@ -13,7 +13,7 @@ import org.rainbow.solar.rest.converter.HourlyElectricityDtoConverter;
 import org.rainbow.solar.rest.dto.HourlyElectricityDto;
 import org.rainbow.solar.rest.err.HourlyElectricityNotFoundError;
 import org.rainbow.solar.rest.err.PanelNotFoundError;
-import org.rainbow.solar.rest.util.UriUtil;
+import org.rainbow.solar.rest.util.HourlyElectricityHateoasUtil;
 import org.rainbow.solar.service.HourlyElectricityService;
 import org.rainbow.solar.service.PanelService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,7 +62,8 @@ public class HourlyElectricityController {
 		}
 		hourlyElectricity.setPanel(panel);
 		HourlyElectricity createdHourlyElectricity = hourlyElectricityService.create(hourlyElectricity);
-		return ResponseEntity.created(UriUtil.buildUri(createdHourlyElectricity.getId())).build();
+		return ResponseEntity
+				.created(new HourlyElectricityHateoasUtil(createdHourlyElectricity.getId()).buildUri(panelId)).build();
 	}
 
 	@PutMapping(path = "/{panelId}/hourly/{hourlyElectricityId}")
