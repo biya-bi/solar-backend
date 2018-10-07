@@ -89,7 +89,7 @@ public class PanelController {
 		if (panel == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(id));
 		}
-		return ResponseEntity.ok(PanelDtoConverter.toDtoFromCurrentUri(panel));
+		return ResponseEntity.ok(PanelDtoConverter.toDto(panel));
 	}
 
 	@GetMapping(path = "/count")
