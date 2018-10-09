@@ -249,8 +249,7 @@ public class HourlyElectricityControllerTests {
 		Long hourlyElectricityId = 1L;
 		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
 
-		stub(hourlyElectricityService.getById(any())).toReturn(null);
-		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(true);
+		stub(hourlyElectricityService.exists(hourlyElectricityId)).toReturn(false);
 
 		stub(panelService.exists(panelId)).toReturn(true);
 
@@ -261,7 +260,7 @@ public class HourlyElectricityControllerTests {
 		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
 
 		ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
-		verify(hourlyElectricityService).getById(argumentCaptor.capture());
+		verify(hourlyElectricityService).exists(argumentCaptor.capture());
 	}
 
 	@Test

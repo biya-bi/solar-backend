@@ -90,12 +90,11 @@ public class HourlyElectricityController {
 		if (!panelService.exists(panelId)) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new PanelNotFoundError(panelId));
 		}
-		HourlyElectricity hourlyElectricity = hourlyElectricityService.getById(hourlyElectricityId);
-		if (hourlyElectricity == null) {
+		if (!hourlyElectricityService.exists(hourlyElectricityId)) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
 					.body(new HourlyElectricityNotFoundError(hourlyElectricityId));
 		}
-
+		HourlyElectricity hourlyElectricity = new HourlyElectricity(hourlyElectricityId);
 		hourlyElectricity.setPanel(new Panel(panelId));
 		hourlyElectricityService.delete(hourlyElectricity);
 		return ResponseEntity.noContent().build();
