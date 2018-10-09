@@ -66,7 +66,7 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void create_AllFieldsAreValid_PanelCreated() throws Exception {
+	public void create_PanelIsValid_PanelCreated() throws Exception {
 		Panel panel = new Panel(1L, "232323", 54.123232, 54.123232, "tesla", UnitOfMeasure.KW);
 
 		stub(panelService.create(any())).toReturn(panel);
@@ -163,7 +163,7 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void update_AllFieldsAreValid_PanelUpdated() throws Exception {
+	public void update_PanelIsValid_PanelUpdated() throws Exception {
 		Panel panel = new Panel(1L, "22222", 80.123456, 81.654321, "tesla", UnitOfMeasure.KW);
 
 		stub(panelService.update(any())).toReturn(panel);

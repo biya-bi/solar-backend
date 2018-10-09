@@ -75,7 +75,7 @@ public class HourlyElectricityControllerTests {
 	}
 
 	@Test
-	public void create_AllFieldsAreValid_HourlyElectricityCreated() throws Exception {
+	public void create_HourlyElectricityIsValid_HourlyElectricityCreated() throws Exception {
 		Long panelId = 1L;
 
 		String uri = String.format("/api/panels/%s/hourly", panelId);
@@ -186,7 +186,7 @@ public class HourlyElectricityControllerTests {
 	}
 
 	@Test
-	public void update_AllFieldsAreValid_HourlyElectricityUpdated() throws Exception {
+	public void update_HourlyElectricityIsValid_HourlyElectricityUpdated() throws Exception {
 		Long panelId = 1L;
 		Long hourlyElectricityId = 1L;
 
