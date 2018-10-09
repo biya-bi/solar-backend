@@ -22,19 +22,9 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.rainbow.solar.model.Panel;
 import org.rainbow.solar.model.UnitOfMeasure;
 import org.rainbow.solar.rest.dto.PanelDto;
-import org.rainbow.solar.rest.err.PanelNotFoundError;
-import org.rainbow.solar.rest.err.PanelSerialDuplicateError;
-import org.rainbow.solar.rest.err.PanelSerialMaxLengthExceededError;
-import org.rainbow.solar.rest.err.PanelSerialRequiredError;
-import org.rainbow.solar.rest.err.SolarErrorCode;
 import org.rainbow.solar.rest.handler.GlobalExceptionHandler;
-import org.rainbow.solar.rest.util.ErrorMessagesResourceBundle;
 import org.rainbow.solar.rest.util.JsonConverter;
 import org.rainbow.solar.service.PanelService;
-import org.rainbow.solar.service.exc.PanelSerialDuplicateException;
-import org.rainbow.solar.service.exc.PanelSerialMaxLengthExceededException;
-import org.rainbow.solar.service.exc.PanelSerialRequiredException;
-import org.rainbow.solar.service.util.ExceptionMessagesResourceBundle;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -84,85 +74,6 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void create_SerialNumberIsEmpty_UnprocessableEntityErrorReturned() throws Exception {
-		stub(panelService.create(any())).toThrow(new PanelSerialRequiredException());
-
-		Panel panel = new Panel("", 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
-
-		MvcResult result = mockMvc.perform(
-				post("/api/panels").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
-				.andReturn();
-
-		MockHttpServletResponse response = result.getResponse();
-
-		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
-
-		PanelSerialRequiredError error = JsonConverter.fromJson(PanelSerialRequiredError.class,
-				response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_REQUIRED.value(), error.getCode());
-		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("panel.serial.required"), error.getMessage());
-
-		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
-		verify(panelService).create(argumentCaptor.capture());
-	}
-
-	@Test
-	public void create_SerialNumberLengthIsGreaterThanMaximum_UnprocessableEntityErrorReturned() throws Exception {
-		String serial = "1234567890123456789";
-		int maxLength = 16;
-
-		stub(panelService.create(any())).toThrow(new PanelSerialMaxLengthExceededException(serial, maxLength));
-
-		Panel panel = new Panel(serial, 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
-
-		MvcResult result = mockMvc.perform(
-				post("/api/panels").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
-				.andReturn();
-
-		MockHttpServletResponse response = result.getResponse();
-
-		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
-
-		PanelSerialMaxLengthExceededError error = JsonConverter.fromJson(PanelSerialMaxLengthExceededError.class,
-				response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_MAX_LENGTH_EXCEEDED.value(), error.getCode());
-		Assert.assertEquals(String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.length.too.long"),
-				serial, maxLength), error.getMessage());
-		Assert.assertEquals(serial, error.getSerial());
-		Assert.assertEquals(Integer.valueOf(maxLength), Integer.valueOf(error.getMaxLength()));
-
-		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
-		verify(panelService).create(argumentCaptor.capture());
-	}
-
-	@Test
-	public void create_AnotherPanelHasSameSerial_UnprocessableEntityErrorReturned() throws Exception {
-		String serial = "100001";
-
-		stub(panelService.create(any())).toThrow(new PanelSerialDuplicateException(serial));
-
-		Panel panel = new Panel(serial, 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
-
-		MvcResult result = mockMvc.perform(
-				post("/api/panels").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
-				.andReturn();
-
-		MockHttpServletResponse response = result.getResponse();
-
-		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
-
-		PanelSerialDuplicateError error = JsonConverter.fromJson(PanelSerialDuplicateError.class,
-				response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_DUPLICATE.value(), error.getCode());
-		Assert.assertEquals(String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.duplicate"), serial),
-				error.getMessage());
-		Assert.assertEquals(serial, error.getSerial());
-
-		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
-		verify(panelService).create(argumentCaptor.capture());
-	}
-
-	@Test
 	public void update_PanelIsValid_PanelUpdated() throws Exception {
 		Panel panel = new Panel(1L, "22222", 80.123456, 81.654321, "tesla", UnitOfMeasure.KW);
 
@@ -182,88 +93,6 @@ public class PanelControllerTests {
 	}
 
 	@Test
-	public void update_SerialNumberIsEmpty_UnprocessableEntityErrorReturned() throws Exception {
-		stub(panelService.update(any())).toThrow(new PanelSerialRequiredException());
-
-		Panel panel = new Panel("", 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
-		stub(panelService.exists(1L)).toReturn(true);
-
-		MvcResult result = mockMvc.perform(
-				put("/api/panels/1").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
-				.andReturn();
-
-		MockHttpServletResponse response = result.getResponse();
-
-		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
-
-		PanelSerialRequiredError error = JsonConverter.fromJson(PanelSerialRequiredError.class,
-				response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_REQUIRED.value(), error.getCode());
-		Assert.assertEquals(ExceptionMessagesResourceBundle.getMessage("panel.serial.required"), error.getMessage());
-
-		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
-		verify(panelService).update(argumentCaptor.capture());
-	}
-
-	@Test
-	public void update_SerialNumberLengthIsGreaterThanMaximum_UnprocessableEntityErrorReturned() throws Exception {
-		String serial = "1234567890123456789";
-		int maxLength = 16;
-
-		stub(panelService.update(any())).toThrow(new PanelSerialMaxLengthExceededException(serial, maxLength));
-		stub(panelService.exists(1L)).toReturn(true);
-
-		Panel panel = new Panel(serial, 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
-
-		MvcResult result = mockMvc.perform(
-				put("/api/panels/1").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
-				.andReturn();
-
-		MockHttpServletResponse response = result.getResponse();
-
-		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
-
-		PanelSerialMaxLengthExceededError error = JsonConverter.fromJson(PanelSerialMaxLengthExceededError.class,
-				response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_MAX_LENGTH_EXCEEDED.value(), error.getCode());
-		Assert.assertEquals(String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.length.too.long"),
-				serial, maxLength), error.getMessage());
-		Assert.assertEquals(serial, error.getSerial());
-		Assert.assertEquals(Integer.valueOf(maxLength), Integer.valueOf(error.getMaxLength()));
-
-		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
-		verify(panelService).update(argumentCaptor.capture());
-	}
-
-	@Test
-	public void update_AnotherPanelHasSameSerial_UnprocessableEntityErrorReturned() throws Exception {
-		String serial = "100001";
-
-		stub(panelService.update(any())).toThrow(new PanelSerialDuplicateException(serial));
-		stub(panelService.exists(1L)).toReturn(true);
-
-		Panel panel = new Panel(serial, 75.645289, 75.147852, "suntech", UnitOfMeasure.KW);
-
-		MvcResult result = mockMvc.perform(
-				put("/api/panels/1").content(JsonConverter.toJson(panel)).contentType(MediaType.APPLICATION_JSON))
-				.andReturn();
-
-		MockHttpServletResponse response = result.getResponse();
-
-		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), response.getStatus());
-
-		PanelSerialDuplicateError error = JsonConverter.fromJson(PanelSerialDuplicateError.class,
-				response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_SERIAL_DUPLICATE.value(), error.getCode());
-		Assert.assertEquals(String.format(ExceptionMessagesResourceBundle.getMessage("panel.serial.duplicate"), serial),
-				error.getMessage());
-		Assert.assertEquals(serial, error.getSerial());
-
-		ArgumentCaptor<Panel> argumentCaptor = ArgumentCaptor.forClass(Panel.class);
-		verify(panelService).update(argumentCaptor.capture());
-	}
-
-	@Test
 	public void update_PanelDoesNotExist_NotFoundErrorReturned() throws Exception {
 		Long panelId = 1L;
 		stub(panelService.exists(1L)).toReturn(false);
@@ -276,12 +105,6 @@ public class PanelControllerTests {
 		MockHttpServletResponse response = result.getResponse();
 
 		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
-
-		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
-				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
 	}
 
 	@Test
@@ -310,12 +133,6 @@ public class PanelControllerTests {
 		MockHttpServletResponse response = result.getResponse();
 
 		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
-
-		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
-				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
 	}
 
 	@Test
@@ -347,12 +164,6 @@ public class PanelControllerTests {
 		MockHttpServletResponse response = result.getResponse();
 
 		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
-
-		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
-				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
 
 		ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
 		verify(panelService).getById(argumentCaptor.capture());

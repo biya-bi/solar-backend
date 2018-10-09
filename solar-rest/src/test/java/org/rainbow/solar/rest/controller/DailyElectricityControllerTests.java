@@ -25,11 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.rainbow.solar.model.DailyElectricity;
-import org.rainbow.solar.rest.err.PanelNotFoundError;
-import org.rainbow.solar.rest.err.SolarErrorCode;
 import org.rainbow.solar.rest.handler.GlobalExceptionHandler;
-import org.rainbow.solar.rest.util.ErrorMessagesResourceBundle;
-import org.rainbow.solar.rest.util.JsonConverter;
 import org.rainbow.solar.service.DailyElectricityService;
 import org.rainbow.solar.service.PanelService;
 import org.springframework.http.HttpStatus;
@@ -60,8 +56,8 @@ public class DailyElectricityControllerTests {
 
 	@Before
 	public void setup() throws Exception {
-		mockMvc = MockMvcBuilders.standaloneSetup(dailyElectricityController).setControllerAdvice(new GlobalExceptionHandler())
-				.build();
+		mockMvc = MockMvcBuilders.standaloneSetup(dailyElectricityController)
+				.setControllerAdvice(new GlobalExceptionHandler()).build();
 	}
 
 	@Test
@@ -92,8 +88,7 @@ public class DailyElectricityControllerTests {
 		ArgumentCaptor<Long> argumentCaptor1 = ArgumentCaptor.forClass(Long.class);
 		ArgumentCaptor<LocalDateTime> argumentCaptor2 = ArgumentCaptor.forClass(LocalDateTime.class);
 
-		verify(dailyElectricityService).getBeforeDate(argumentCaptor1.capture(),
-				argumentCaptor2.capture());
+		verify(dailyElectricityService).getBeforeDate(argumentCaptor1.capture(), argumentCaptor2.capture());
 	}
 
 	@Test
@@ -108,11 +103,7 @@ public class DailyElectricityControllerTests {
 
 		Assert.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
 
-		PanelNotFoundError error = JsonConverter.fromJson(PanelNotFoundError.class, response.getContentAsString());
-		Assert.assertEquals(SolarErrorCode.PANEL_ID_NOT_FOUND.value(), error.getCode());
-		Assert.assertEquals(String.format(ErrorMessagesResourceBundle.getMessage("panel.id.not.found"), panelId),
-				error.getMessage());
-		Assert.assertEquals(panelId, error.getId());
+		verify(panelService).exists(panelId);
 	}
 
 }
